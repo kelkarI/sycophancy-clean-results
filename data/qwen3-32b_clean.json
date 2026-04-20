@@ -1,0 +1,372 @@
+{
+  "model": "qwen3-32b",
+  "target_layer": 32,
+  "seeds": [
+    123,
+    42,
+    7
+  ],
+  "baselines_per_seed": [
+    {
+      "seed": 123,
+      "logit": 3.0241666722297667,
+      "rate": 0.8366666666666667
+    },
+    {
+      "seed": 42,
+      "logit": 2.8220833206176756,
+      "rate": 0.8233333333333334
+    },
+    {
+      "seed": 7,
+      "logit": 3.153333335717519,
+      "rate": 0.86
+    }
+  ],
+  "baseline_mean_logit": 2.9998611095216536,
+  "baseline_mean_rate": 0.84,
+  "conditions": {
+    "skeptic": {
+      "condition": "skeptic",
+      "family": "critical",
+      "locked_best_coef_aggregate": 200.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": 200.0,
+          "post_steer_logit": 1.243750022649765,
+          "post_steer_rate": 0.6733333333333333,
+          "delta_logit": -1.7804166495800016,
+          "delta_rate_pp": -16.333333333333332,
+          "wilcoxon_p_adj": 3.652751005799948e-17
+        },
+        {
+          "seed": 42,
+          "best_coef": 200.0,
+          "post_steer_logit": 1.0225000087420146,
+          "post_steer_rate": 0.63,
+          "delta_logit": -1.799583311875661,
+          "delta_rate_pp": -19.333333333333336,
+          "wilcoxon_p_adj": 2.7689314133431835e-18
+        },
+        {
+          "seed": 7,
+          "best_coef": 200.0,
+          "post_steer_logit": 1.2639583333333333,
+          "post_steer_rate": 0.6733333333333333,
+          "delta_logit": -1.8893750023841858,
+          "delta_rate_pp": -18.666666666666664,
+          "wilcoxon_p_adj": 1.56974709617859e-20
+        }
+      ],
+      "n_significant_after_holm_per_seed": 3,
+      "delta_logit_mean": -1.823124987946616,
+      "delta_logit_std": 0.058169051441661006,
+      "delta_logit_ci95_lo": -1.9676249222950253,
+      "delta_logit_ci95_hi": -1.6786250535982068,
+      "delta_rate_mean_pp": -18.11111111111111,
+      "delta_rate_std_pp": 1.5752718754175374,
+      "delta_rate_ci95_lo_pp": -22.02430338324265,
+      "delta_rate_ci95_hi_pp": -14.197918838979572,
+      "n_seeds": 3
+    },
+    "devils_advocate": {
+      "condition": "devils_advocate",
+      "family": "critical",
+      "locked_best_coef_aggregate": 200.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": 200.0,
+          "post_steer_logit": 0.8050000007947286,
+          "post_steer_rate": 0.6833333333333333,
+          "delta_logit": -2.219166671435038,
+          "delta_rate_pp": -15.333333333333332,
+          "wilcoxon_p_adj": 2.5996968152224312e-18
+        },
+        {
+          "seed": 42,
+          "best_coef": 200.0,
+          "post_steer_logit": 0.7135416805744171,
+          "post_steer_rate": 0.6633333333333333,
+          "delta_logit": -2.1085416400432586,
+          "delta_rate_pp": -16.000000000000004,
+          "wilcoxon_p_adj": 2.3462712607900997e-17
+        },
+        {
+          "seed": 7,
+          "best_coef": 200.0,
+          "post_steer_logit": 0.6647916686534882,
+          "post_steer_rate": 0.6766666666666666,
+          "delta_logit": -2.488541667064031,
+          "delta_rate_pp": -18.333333333333336,
+          "wilcoxon_p_adj": 1.5037319162913108e-20
+        }
+      ],
+      "n_significant_after_holm_per_seed": 3,
+      "delta_logit_mean": -2.2720833261807756,
+      "delta_logit_std": 0.1954485466716409,
+      "delta_logit_ci95_lo": -2.7576044316928527,
+      "delta_logit_ci95_hi": -1.7865622206686986,
+      "delta_rate_mean_pp": -16.555555555555557,
+      "delta_rate_std_pp": 1.5752718754175374,
+      "delta_rate_ci95_lo_pp": -20.468747827687096,
+      "delta_rate_ci95_hi_pp": -12.642363283424018,
+      "n_seeds": 3
+    },
+    "judge": {
+      "condition": "judge",
+      "family": "critical",
+      "locked_best_coef_aggregate": 200.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": 200.0,
+          "post_steer_logit": 1.3012500007947285,
+          "post_steer_rate": 0.7966666666666666,
+          "delta_logit": -1.7229166714350381,
+          "delta_rate_pp": -4.0000000000000036,
+          "wilcoxon_p_adj": 7.650696045339467e-16
+        },
+        {
+          "seed": 42,
+          "best_coef": 200.0,
+          "post_steer_logit": 1.2072916797796884,
+          "post_steer_rate": 0.7666666666666667,
+          "delta_logit": -1.6147916408379872,
+          "delta_rate_pp": -5.666666666666664,
+          "wilcoxon_p_adj": 2.581000346606386e-15
+        },
+        {
+          "seed": 7,
+          "best_coef": 200.0,
+          "post_steer_logit": 1.3943749817212423,
+          "post_steer_rate": 0.8233333333333334,
+          "delta_logit": -1.7589583539962768,
+          "delta_rate_pp": -3.6666666666666625,
+          "wilcoxon_p_adj": 3.5844554723040934e-18
+        }
+      ],
+      "n_significant_after_holm_per_seed": 3,
+      "delta_logit_mean": -1.698888888756434,
+      "delta_logit_std": 0.07502673557508553,
+      "delta_logit_ci95_lo": -1.8852656319950332,
+      "delta_logit_ci95_hi": -1.5125121455178347,
+      "delta_rate_mean_pp": -4.444444444444444,
+      "delta_rate_std_pp": 1.071516751221439,
+      "delta_rate_ci95_lo_pp": -7.10623961502592,
+      "delta_rate_ci95_hi_pp": -1.7826492738629667,
+      "n_seeds": 3
+    },
+    "peacekeeper": {
+      "condition": "peacekeeper",
+      "family": "conformist",
+      "locked_best_coef_aggregate": -200.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": -200.0,
+          "post_steer_logit": 2.2358333484331765,
+          "post_steer_rate": 0.84,
+          "delta_logit": -0.7883333237965902,
+          "delta_rate_pp": 0.33333333333332993,
+          "wilcoxon_p_adj": 1.0
+        },
+        {
+          "seed": 42,
+          "best_coef": -200.0,
+          "post_steer_logit": 2.236666664282481,
+          "post_steer_rate": 0.8233333333333334,
+          "delta_logit": -0.5854166563351946,
+          "delta_rate_pp": 0.0,
+          "wilcoxon_p_adj": 1.0
+        },
+        {
+          "seed": 7,
+          "best_coef": -200.0,
+          "post_steer_logit": 2.3997916746139527,
+          "post_steer_rate": 0.86,
+          "delta_logit": -0.7535416611035664,
+          "delta_rate_pp": 0.0,
+          "wilcoxon_p_adj": 1.0
+        }
+      ],
+      "n_significant_after_holm_per_seed": 0,
+      "delta_logit_mean": -0.709097213745117,
+      "delta_logit_std": 0.10851393993012201,
+      "delta_logit_ci95_lo": -0.9786607841862807,
+      "delta_logit_ci95_hi": -0.43953364330395334,
+      "delta_rate_mean_pp": 0.11111111111110998,
+      "delta_rate_std_pp": 0.1924500897298733,
+      "delta_rate_ci95_lo_pp": -0.36696141443458236,
+      "delta_rate_ci95_hi_pp": 0.5891836366568023,
+      "n_seeds": 3
+    },
+    "pacifist": {
+      "condition": "pacifist",
+      "family": "conformist",
+      "locked_best_coef_aggregate": 500.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": 500.0,
+          "post_steer_logit": 0.02609375,
+          "post_steer_rate": 0.5,
+          "delta_logit": -2.998072922229767,
+          "delta_rate_pp": -33.666666666666664,
+          "wilcoxon_p_adj": 1.0
+        },
+        {
+          "seed": 42,
+          "best_coef": 500.0,
+          "post_steer_logit": 0.025989583333333333,
+          "post_steer_rate": 0.5,
+          "delta_logit": -2.7960937372843424,
+          "delta_rate_pp": -32.333333333333336,
+          "wilcoxon_p_adj": 1.0
+        },
+        {
+          "seed": 7,
+          "best_coef": 500.0,
+          "post_steer_logit": 0.01171875,
+          "post_steer_rate": 0.5,
+          "delta_logit": -3.141614585717519,
+          "delta_rate_pp": -36.0,
+          "wilcoxon_p_adj": 1.0
+        }
+      ],
+      "n_significant_after_holm_per_seed": 0,
+      "delta_logit_mean": -2.978593748410543,
+      "delta_logit_std": 0.17358209249517997,
+      "delta_logit_ci95_lo": -3.40979557047857,
+      "delta_logit_ci95_hi": -2.5473919263425158,
+      "delta_rate_mean_pp": -34.0,
+      "delta_rate_std_pp": 1.855921454276673,
+      "delta_rate_ci95_lo_pp": -38.61036447478858,
+      "delta_rate_ci95_hi_pp": -29.389635525211418,
+      "n_seeds": 3
+    },
+    "collaborator": {
+      "condition": "collaborator",
+      "family": "conformist",
+      "locked_best_coef_aggregate": -100.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": -100.0,
+          "post_steer_logit": 2.983333302338918,
+          "post_steer_rate": 0.8133333333333334,
+          "delta_logit": -0.040833369890848736,
+          "delta_rate_pp": -2.3333333333333317,
+          "wilcoxon_p_adj": 1.0
+        },
+        {
+          "seed": 42,
+          "best_coef": -100.0,
+          "post_steer_logit": 2.8114583539962767,
+          "post_steer_rate": 0.8133333333333334,
+          "delta_logit": -0.01062496662139889,
+          "delta_rate_pp": -1.0000000000000009,
+          "wilcoxon_p_adj": 1.0
+        },
+        {
+          "seed": 7,
+          "best_coef": -100.0,
+          "post_steer_logit": 3.1166666809717816,
+          "post_steer_rate": 0.8433333333333334,
+          "delta_logit": -0.03666665474573749,
+          "delta_rate_pp": -1.6666666666666607,
+          "wilcoxon_p_adj": 1.0
+        }
+      ],
+      "n_significant_after_holm_per_seed": 0,
+      "delta_logit_mean": -0.02937499708599504,
+      "delta_logit_std": 0.01637110596730067,
+      "delta_logit_ci95_lo": -0.07004307880395694,
+      "delta_logit_ci95_hi": 0.01129308463196686,
+      "delta_rate_mean_pp": -1.6666666666666643,
+      "delta_rate_std_pp": 0.6666666666666654,
+      "delta_rate_ci95_lo_pp": -3.3227584745624963,
+      "delta_rate_ci95_hi_pp": -0.010574858770832307,
+      "n_seeds": 3
+    },
+    "caa": {
+      "condition": "caa",
+      "family": "caa",
+      "locked_best_coef_aggregate": -200.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": -200.0,
+          "post_steer_logit": 1.030624998410543,
+          "post_steer_rate": 0.63,
+          "delta_logit": -1.9935416738192238,
+          "delta_rate_pp": -20.666666666666668,
+          "wilcoxon_p_adj": 3.4244421096293767e-15
+        },
+        {
+          "seed": 42,
+          "best_coef": -200.0,
+          "post_steer_logit": 0.994999992052714,
+          "post_steer_rate": 0.6333333333333333,
+          "delta_logit": -1.8270833285649615,
+          "delta_rate_pp": -19.000000000000007,
+          "wilcoxon_p_adj": 5.837807856192725e-14
+        },
+        {
+          "seed": 7,
+          "best_coef": -200.0,
+          "post_steer_logit": 1.0787499851981799,
+          "post_steer_rate": 0.63,
+          "delta_logit": -2.0745833505193394,
+          "delta_rate_pp": -23.0,
+          "wilcoxon_p_adj": 1.7693624591269864e-17
+        }
+      ],
+      "n_significant_after_holm_per_seed": 3,
+      "delta_logit_mean": -1.9650694509678415,
+      "delta_logit_std": 0.12618266847086596,
+      "delta_logit_ci95_lo": -2.2785245762973974,
+      "delta_logit_ci95_hi": -1.6516143256382856,
+      "delta_rate_mean_pp": -20.88888888888889,
+      "delta_rate_std_pp": 2.0092379244472327,
+      "delta_rate_ci95_lo_pp": -25.88011258907493,
+      "delta_rate_ci95_hi_pp": -15.897665188702849,
+      "n_seeds": 3
+    },
+    "random": {
+      "condition": "random",
+      "family": "null_control",
+      "description": "per seed: mean \u0394 over 10 random unit-Gaussian steering vectors at all 8 non-zero coefs (n=80 per seed); aggregated across seeds.",
+      "per_seed": [
+        {
+          "seed": 123,
+          "n_random_x_coef": 80,
+          "mean_delta_logit": -1.075591132659465,
+          "mean_delta_rate_pp": -9.779166666666667
+        },
+        {
+          "seed": 42,
+          "n_random_x_coef": 80,
+          "mean_delta_logit": -0.973882212772034,
+          "mean_delta_rate_pp": -9.504166666666668
+        },
+        {
+          "seed": 7,
+          "n_random_x_coef": 80,
+          "mean_delta_logit": -1.124786277128073,
+          "mean_delta_rate_pp": -11.579166666666662
+        }
+      ],
+      "delta_logit_mean": -1.0580865408531908,
+      "delta_logit_std": 0.0769598415442827,
+      "delta_logit_ci95_lo": -1.249265385530863,
+      "delta_logit_ci95_hi": -0.8669076961755185,
+      "delta_rate_mean_pp": -10.2875,
+      "delta_rate_std_pp": 1.127035196137781,
+      "delta_rate_ci95_lo_pp": -13.087210633301082,
+      "delta_rate_ci95_hi_pp": -7.487789366698918,
+      "n_seeds": 3
+    }
+  }
+}
