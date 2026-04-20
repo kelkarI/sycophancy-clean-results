@@ -64,10 +64,19 @@ sycophancy-clean-results/
 │   ├── fig3_per_seed_filtered.{pdf,png}       same, degraded cells dropped
 │   ├── fig4_cosines.{pdf,png}                 6+1 cosine heatmap per model
 │   ├── fig5_tone_comparison.pdf               typeset tone-contrast showcase (reportlab)
-│   └── fig6_steering_curves.{pdf,png}         coefficient sweep per model,
-│                                              kept conditions only (re-draws the
-│                                              source-pipeline fig1 without the
-│                                              dropped conditions)
+│   ├── fig6_steering_curves.{pdf,png}         coefficient sweep per model,
+│   │                                          kept conditions only (re-draws the
+│   │                                          source-pipeline fig1 without the
+│   │                                          dropped conditions)
+│   ├── fig7_steering_curves_family.{pdf,png}  same sweep, three lines per model
+│   │                                          (CAA + critical mean + conformist
+│   │                                          mean) with min/max bands; degraded
+│   │                                          cells masked before averaging — see
+│   │                                          "Family averaging (fig7)" below
+│   └── fig8_steering_curves_family_pos.{pdf,png}  fig7 restricted to coef >= 0,
+│                                              i.e. the positive half of the
+│                                              sweep only (same averaging and
+│                                              masking rules as fig7)
 ├── qualitative/
 │   ├── qual_check_caa.json                    Gemma free-form responses,
 │   │                                          5 philosophy prompts × {baseline, caa,
@@ -132,6 +141,67 @@ sycophancy-clean-results/
   Only one cell is currently degraded at its tune-locked coef: **Qwen
   3 32B × pacifist @ coef 500** (all 3 test seeds). Every other
   (model, condition) stays on the non-degraded manifold.
+
+## Family averaging (fig7)
+
+`fig6_steering_curves` draws one line per kept condition (CAA + 3
+critical roles + 3 conformist roles + random mean + baseline).
+`fig7_steering_curves_family` collapses the two role families to one
+line each, giving three lines per panel (CAA, critical mean,
+conformist mean) plus the usual random band and baseline. The
+aggregation rule is:
+
+1. **Metric.** Plotted values are the already-aggregated multi-seed
+   means in `results/sycophancy_rates_test.json` (same numbers fig6
+   plots). No re-averaging across seeds happens here.
+2. **Inputs per family.**
+   - `critical`   = {`skeptic`, `devils_advocate`, `judge`}
+   - `conformist` = {`peacekeeper`, `pacifist`, `collaborator`}
+   - `caa` is not a family — it is a single vector, plotted as-is with
+     no band (its own degraded cells are still dropped).
+3. **Degradation mask.** At each coefficient `c`, role `r` is excluded
+   from the family mean / min / max if
+   `degradation_flags_test.json[r][c] == True` (OR across test seeds,
+   matching the `degraded_any_seed` field used elsewhere). This
+   prevents a single collapsed forward pass from dragging the family
+   curve toward binary rate ≈ 50 % / syc-logit ≈ 0. Example: on
+   Qwen, `pacifist @ ±500` and several ±500 cells collapse; on Gemma,
+   the ±5000 endpoints collapse for most conditions. Those points are
+   omitted from the mean.
+4. **Aggregation.** After masking, at each coefficient the family
+   *mean* line is the arithmetic mean of the surviving role values
+   (`1/k ∑ rate_r` or `1/k ∑ syc_logit_r`, k ≤ 3). The shaded band is
+   the (min, max) across surviving members at that coefficient. If
+   zero members survive, the point is NaN and the line breaks there.
+5. **No within-family sign alignment.** Values are averaged at the raw
+   signed coefficient — we do not re-orient per-role curves onto a
+   shared "dose" axis. Within the Qwen conformist family the tune-
+   locked coefficients are {peacekeeper −200, pacifist +500,
+   collaborator −100}, so the three roles push sycophancy in opposite
+   coefficient directions; the min/max band therefore widens
+   noticeably on that panel. Readers who want each role's own dose-
+   response should consult fig6.
+6. **Random and baseline.** The random mean (n = 10 vectors) ± std
+   band and the baseline (coef = 0) line are drawn identically to
+   fig6 — they are not re-averaged at the family level.
+
+The code path is `scripts/make_steering_curves.py:_family_series` (mean
+and min/max) and `_plot_family` (rendering).
+
+`fig8_steering_curves_family_pos` is the same plot restricted to
+`coef >= 0`. Reading the positive half alone is the most direct
+"push toward X" story:
+
+- CAA at `+coef` amplifies sycophancy (the CAA vector points from
+  honest toward sycophantic, so its tune-locked reduction coefficient
+  is negative; on the positive half CAA is the upward-going line).
+- Critical family mean at `+coef` reduces sycophancy.
+- Conformist family mean at `+coef` increases sycophancy on Gemma;
+  on Qwen it is roughly flat / slightly upward before the collapse at
+  coef = +500, because two of three Qwen conformist roles have
+  *negative* tune-locked coefficients (peacekeeper −200, collaborator
+  −100) and only pacifist pushes sycophancy up at +coef. fig7 shows
+  the full picture on both sides.
 
 ## Qualitative samples
 
