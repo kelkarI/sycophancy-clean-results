@@ -48,7 +48,9 @@ sycophancy-clean-results/
 │   └── qwen3-32b_cosines.json                 same, Qwen
 ├── scripts/
 │   ├── build_data.py                          rebuilds data/ from source repos
-│   ├── make_figures.py                        rebuilds figures/ from data/
+│   ├── build_qualitative.py                   rebuilds qualitative/ from source repos
+│   ├── make_figures.py                        rebuilds fig1-4 from data/
+│   ├── make_showcase_pdf.py                   rebuilds fig5 tone-comparison PDF
 │   ├── make_tables.py                         rebuilds results/*.csv and *.md
 │   └── _style.py                              shared matplotlib + palette + labels
 ├── figures/
@@ -58,7 +60,19 @@ sycophancy-clean-results/
 │   ├── fig2_delta_rate_filtered.{pdf,png}     same, degraded cells dropped
 │   ├── fig3_per_seed.{pdf,png}                per-seed dot plot (consistency check)
 │   ├── fig3_per_seed_filtered.{pdf,png}       same, degraded cells dropped
-│   └── fig4_cosines.{pdf,png}                 6+1 cosine heatmap per model
+│   ├── fig4_cosines.{pdf,png}                 6+1 cosine heatmap per model
+│   └── fig5_tone_comparison.pdf               typeset tone-contrast showcase (reportlab)
+├── qualitative/
+│   ├── qual_check_caa.json                    Gemma free-form responses,
+│   │                                          5 philosophy prompts × {baseline, caa,
+│   │                                          assistant_axis, skeptic}
+│   ├── qual_check_conformist.json             Gemma free-form responses,
+│   │                                          5 prompts × {baseline, peacekeeper,
+│   │                                          pacifist, collaborator, facilitator, skeptic}
+│   ├── gemma-2-27b-it_over_correction.json    Gemma over-correction probes (128 samples)
+│   ├── qwen3-32b_over_correction.json         Qwen over-correction probes (128 samples)
+│   ├── gemma_showcase.md                      rendered tone contrast, single Gemma prompt
+│   └── qwen_showcase.md                       rendered tone contrast, two Qwen probes
 └── results/
     ├── main_table.{csv,md}                    condition × model table (degraded rows flagged †)
     ├── main_table_filtered.{csv,md}           same, degraded rows removed
@@ -113,11 +127,43 @@ sycophancy-clean-results/
   3 32B × pacifist @ coef 500** (all 3 test seeds). Every other
   (model, condition) stays on the non-degraded manifold.
 
+## Qualitative samples
+
+The A/B logit numbers are the primary signal, but stored decoded
+responses show what the tone shift actually looks like. `qualitative/`
+collects two kinds of samples:
+
+- **Free-form responses on philosophy prompts** (Gemma only, from
+  `sycophancy-final`). Each prompt is a philosopher introducing
+  themselves and asking the model to take a side; the response is a
+  full open-ended continuation under steering. Stored as
+  `qual_check_{caa,conformist}.json`.
+- **Over-correction probes** (both models, from
+  `sycophancy-{final,qwen}`). Each probe is a domain expert asserting
+  either a true or false claim and asking if the model agrees. The
+  pipeline auto-categorises each response as
+  `AGREE_CORRECT` / `AGREE_INCORRECT` / `REFUSE` / `HEDGE`. Stored as
+  `{gemma-2-27b-it,qwen3-32b}_over_correction.json` (trimmed to kept
+  conditions).
+
+`gemma_showcase.md` and `qwen_showcase.md` render one representative
+prompt per model across the kept conditions so the tone shift is
+readable without opening a JSON. `figures/fig5_tone_comparison.pdf`
+is a typeset (reportlab) tone-comparison document: John Locke's
+empiricism prompt on Gemma and a chemistry professor's false claim on
+Qwen, each decoded at baseline / CAA / skeptic / pacifist. Signature
+opening sentences are bolded — both skeptics open with "I must
+respectfully disagree", both baselines with flattery. Qwen × pacifist
+@ +500 is the one cell flagged `degraded`; you can see the collapsed
+forward pass as a repetition loop in free text.
+
 ## How to reproduce
 
 ```bash
 cd sycophancy-clean-results
-python3 scripts/build_data.py       # rebuilds data/ from source repos
+python3 scripts/build_data.py         # rebuilds data/ from source repos
+python3 scripts/build_qualitative.py  # rebuilds qualitative/ from source repos
+python3 scripts/make_showcase_pdf.py  # rebuilds figures/fig5_tone_comparison.pdf
 python3 scripts/make_tables.py      # rebuilds results/
 python3 scripts/make_figures.py     # rebuilds figures/
 ```
