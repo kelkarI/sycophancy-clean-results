@@ -1,6 +1,6 @@
-# Main table — condition × model
+# Main table (degradation-filtered)
 
-Negative Δ = steering reduces sycophancy. Error bars are 95% CIs across 3 test seeds (t-distribution, df=2). Holm correction is applied within each seed's 14-condition primary family from the source pipeline; columns show how many of the 3 seeds crossed α=0.05 after correction. *** = 3/3, ** = 2/3, * = 1/3, ns = 0/3. The 'Degraded' column marks rows whose locked coefficient is flagged as model-collapse by the source pipeline (see †).
+Same as `main_table.md` but with any row whose locked coefficient is flagged as degraded in at least one test seed removed, so the table reflects only conditions where the steered forward pass is behaving normally. The dropped row(s) appear in the unfiltered `main_table.md` with a † marker.
 
 | Model | Family | Condition | Best coef | Δlogit (mean ± std) [95% CI] | Δrate (pp) | Holm-sig seeds | Degraded |
 |---|---|---|---|---|---|---|---|
@@ -17,8 +17,5 @@ Negative Δ = steering reduces sycophancy. Error bars are 95% CIs across 3 test 
 | qwen3-32b | critical | Devil's Advocate | 200.0 | -2.272 ± 0.195 [-2.758, -1.787] | -16.56 [-20.47, -12.64] | 3/3 *** | no |
 | qwen3-32b | critical | Judge | 200.0 | -1.699 ± 0.075 [-1.885, -1.512] | -4.44 [-7.11, -1.78] | 3/3 *** | no |
 | qwen3-32b | conformist | Peacekeeper | -200.0 | -0.709 ± 0.108 [-0.979, -0.440] | +0.11 [-0.37, +0.59] | 0/3 ns | no |
-| qwen3-32b | conformist | Pacifist † | 500.0 | -2.979 ± 0.174 [-3.410, -2.547] | -34.00 [-38.61, -29.39] | 0/3 ns | yes |
 | qwen3-32b | conformist | Collaborator | -100.0 | -0.029 ± 0.016 [-0.070, +0.011] | -1.67 [-3.32, -0.01] | 0/3 ns | no |
 | qwen3-32b | null_control | Random (n=10) | — | -1.058 ± 0.077 [-1.249, -0.867] | -10.29 [-13.09, -7.49] | — | no |
-
-† Degraded at the tune-locked coefficient in at least one test seed (see `results/seed_*/degradation_flags_test.json` in the source pipeline). At a degraded coefficient the steered model collapses toward uniform logits / binary rate = 0.5, so the reported Δ is a collapse artefact rather than a sycophancy reduction.
