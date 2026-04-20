@@ -1,9 +1,18 @@
-"""Emit the two paper-ready tables:
+"""Emit the paper-ready tables.
 
-  results/main_table.csv            one row per (model, condition)
-  results/conformist_vs_critical.csv family-level summary
+Core tables:
+  results/main_table.csv              one row per (model, condition)
+  results/conformist_vs_critical.csv  family-level summary
 
-Both accompanied by .md siblings for easy pasting.
+Degradation-aware variants (cells where the source pipeline's
+degradation flag is True at the tune-locked coefficient are masked
+out — those cells are model-collapse artefacts, not sycophancy
+reductions):
+  results/main_table_filtered.csv             dropped degraded rows
+  results/conformist_vs_critical_filtered.csv family mean excluding
+                                              degraded members
+
+Both core and filtered tables have .md siblings for easy pasting.
 """
 import csv
 import json
@@ -40,6 +49,7 @@ def main_table():
         "per_seed_wilcoxon_p_holm_adj",
         "n_significant_after_holm_seeds",
         "n_seeds",
+        "degraded_any_seed", "degraded_all_seeds",
     ]
     rows = []
     for model, p in MODELS.items():
@@ -76,6 +86,8 @@ def main_table():
                 ),
                 "n_significant_after_holm_seeds": n_sig if n_sig is not None else "",
                 "n_seeds": cd["n_seeds"],
+                "degraded_any_seed": bool(cd.get("degraded_any_seed", False)),
+                "degraded_all_seeds": bool(cd.get("degraded_all_seeds", False)),
             })
     csv_path = OUT / "main_table.csv"
     with csv_path.open("w", newline="") as f:
@@ -84,8 +96,16 @@ def main_table():
         w.writerows(rows)
     print(f"wrote {csv_path}  ({len(rows)} rows)")
 
-    # Compact markdown too
-    md_path = OUT / "main_table.md"
+    # Filtered CSV (drop rows degraded at the locked coef)
+    filt_rows = [r for r in rows if not r["degraded_any_seed"]]
+    csv_f = OUT / "main_table_filtered.csv"
+    with csv_f.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w.writeheader()
+        w.writerows(filt_rows)
+    print(f"wrote {csv_f}  ({len(filt_rows)} rows, "
+          f"{len(rows)-len(filt_rows)} dropped)")
+
     def fmt_sig(nsig, nseeds):
         if nsig == "" or nsig is None:
             return ""
@@ -93,103 +113,189 @@ def main_table():
         if nsig == nseeds - 1: return "**"
         if nsig >= 1: return "*"
         return "ns"
-    lines = [
-        "# Main table — condition × model",
-        "",
+
+    def render_md(rows_in, title, blurb, path):
+        lines = [
+            f"# {title}",
+            "",
+            blurb,
+            "",
+            "| Model | Family | Condition | Best coef | Δlogit (mean ± std) "
+            "[95% CI] | Δrate (pp) | Holm-sig seeds | Degraded |",
+            "|---|---|---|---|---|---|---|---|",
+        ]
+        for r in rows_in:
+            dl = (f"{r['delta_logit_mean']:+.3f} ± {r['delta_logit_std']:.3f} "
+                  f"[{r['delta_logit_ci95_lo']:+.3f}, "
+                  f"{r['delta_logit_ci95_hi']:+.3f}]")
+            dr = (f"{r['delta_rate_mean_pp']:+.2f} "
+                  f"[{r['delta_rate_ci95_lo_pp']:+.2f}, "
+                  f"{r['delta_rate_ci95_hi_pp']:+.2f}]")
+            sig = fmt_sig(r['n_significant_after_holm_seeds'], r['n_seeds'])
+            n_over = (f"{r['n_significant_after_holm_seeds']}/3 {sig}"
+                      if r['n_significant_after_holm_seeds'] != "" else "—")
+            coef = r['locked_best_coef'] if r['locked_best_coef'] != "" else "—"
+            deg = ("yes" if r["degraded_all_seeds"]
+                   else ("partial" if r["degraded_any_seed"] else "no"))
+            name = r['display_name']
+            if r["degraded_any_seed"]:
+                name = name + " †"
+            lines.append(
+                f"| {r['model']} | {r['family']} | {name} | "
+                f"{coef} | {dl} | {dr} | {n_over} | {deg} |"
+            )
+        if any(r["degraded_any_seed"] for r in rows_in):
+            lines += [
+                "",
+                "† Degraded at the tune-locked coefficient in at least one "
+                "test seed (see `results/seed_*/degradation_flags_test.json` "
+                "in the source pipeline). At a degraded coefficient the "
+                "steered model collapses toward uniform logits / binary "
+                "rate = 0.5, so the reported Δ is a collapse artefact "
+                "rather than a sycophancy reduction.",
+            ]
+        path.write_text("\n".join(lines) + "\n")
+        print(f"wrote {path}")
+
+    blurb_core = (
         "Negative Δ = steering reduces sycophancy. Error bars are 95% CIs "
         "across 3 test seeds (t-distribution, df=2). Holm correction is "
         "applied within each seed's 14-condition primary family from the "
         "source pipeline; columns show how many of the 3 seeds crossed "
-        "α=0.05 after correction. *** = 3/3, ** = 2/3, * = 1/3, ns = 0/3.",
-        "",
-        "| Model | Family | Condition | Best coef | Δlogit (mean ± std) "
-        "[95% CI] | Δrate (pp) | Holm-sig seeds |",
-        "|---|---|---|---|---|---|---|",
-    ]
-    for r in rows:
-        dl = (f"{r['delta_logit_mean']:+.3f} ± {r['delta_logit_std']:.3f} "
-              f"[{r['delta_logit_ci95_lo']:+.3f}, {r['delta_logit_ci95_hi']:+.3f}]")
-        dr = (f"{r['delta_rate_mean_pp']:+.2f} "
-              f"[{r['delta_rate_ci95_lo_pp']:+.2f}, "
-              f"{r['delta_rate_ci95_hi_pp']:+.2f}]")
-        sig = fmt_sig(r['n_significant_after_holm_seeds'], r['n_seeds'])
-        n_over = (f"{r['n_significant_after_holm_seeds']}/3 {sig}"
-                  if r['n_significant_after_holm_seeds'] != "" else "—")
-        coef = r['locked_best_coef'] if r['locked_best_coef'] != "" else "—"
-        lines.append(
-            f"| {r['model']} | {r['family']} | {r['display_name']} | "
-            f"{coef} | {dl} | {dr} | {n_over} |"
-        )
-    md_path.write_text("\n".join(lines) + "\n")
-    print(f"wrote {md_path}")
+        "α=0.05 after correction. *** = 3/3, ** = 2/3, * = 1/3, ns = 0/3. "
+        "The 'Degraded' column marks rows whose locked coefficient is "
+        "flagged as model-collapse by the source pipeline (see †)."
+    )
+    blurb_filt = (
+        "Same as `main_table.md` but with any row whose locked coefficient "
+        "is flagged as degraded in at least one test seed removed, so the "
+        "table reflects only conditions where the steered forward pass is "
+        "behaving normally. The dropped row(s) appear in the unfiltered "
+        "`main_table.md` with a † marker."
+    )
+    render_md(rows,      "Main table — condition × model",
+              blurb_core, OUT / "main_table.md")
+    render_md(filt_rows, "Main table (degradation-filtered)",
+              blurb_filt, OUT / "main_table_filtered.md")
 
 
 def conformist_vs_critical_table():
-    """Family-level summary: mean (and min/max) Δlogit within each family,
-    plus a pooled test of the family mean against zero."""
+    """Family-level summary: mean (and min/max) Δlogit within each family.
+
+    Two passes:
+      core     — all kept members
+      filtered — members whose locked coef is flagged degraded in any
+                 test seed are excluded from the family mean/range
+    """
     fieldnames = [
-        "model", "family", "n_conditions", "n_seeds",
+        "model", "family", "n_conditions", "n_conditions_used", "n_seeds",
         "family_mean_delta_logit", "family_mean_delta_rate_pp",
         "family_min_delta_logit", "family_max_delta_logit",
         "members_holm_sig_3of3",
+        "degraded_members_excluded",
     ]
-    rows = []
-    for model, p in MODELS.items():
-        block = load(p)
-        conds = block["conditions"]
-        for fam, members in [("critical",   CRITICAL),
-                             ("caa",        ["caa"]),
-                             ("conformist", CONFORMIST),
-                             ("null_control", ["random"])]:
-            logits = [conds[c]["delta_logit_mean"] for c in members]
-            rates  = [conds[c]["delta_rate_mean_pp"] for c in members]
-            sig3 = 0
-            for c in members:
-                if c == "random":
-                    continue
-                if conds[c].get("n_significant_after_holm_per_seed") == 3:
-                    sig3 += 1
-            rows.append({
-                "model": model,
-                "family": fam,
-                "n_conditions": len(members),
-                "n_seeds": 3,
-                "family_mean_delta_logit": round(float(np.mean(logits)), 4),
-                "family_mean_delta_rate_pp": round(float(np.mean(rates)), 3),
-                "family_min_delta_logit": round(float(np.min(logits)), 4),
-                "family_max_delta_logit": round(float(np.max(logits)), 4),
-                "members_holm_sig_3of3": sig3,
-            })
-    csv_path = OUT / "conformist_vs_critical.csv"
-    with csv_path.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
-        w.writeheader()
-        w.writerows(rows)
-    print(f"wrote {csv_path}  ({len(rows)} rows)")
 
-    md_path = OUT / "conformist_vs_critical.md"
-    lines = [
-        "# Family-level summary — critical vs conformist roles",
-        "",
-        "Aggregated across the kept members of each family at their own "
-        "tune-locked coefficients. `members_holm_sig_3of3` counts how many "
-        "of the family's members reached Holm significance in all 3 test "
-        "seeds.",
-        "",
-        "| Model | Family | n cond | mean Δlogit | range Δlogit | mean Δrate (pp) | Holm-sig 3/3 count |",
-        "|---|---|---|---|---|---|---|",
-    ]
-    for r in rows:
-        lines.append(
-            f"| {r['model']} | {r['family']} | {r['n_conditions']} "
-            f"| {r['family_mean_delta_logit']:+.3f} "
-            f"| [{r['family_min_delta_logit']:+.3f}, "
-            f"{r['family_max_delta_logit']:+.3f}] "
-            f"| {r['family_mean_delta_rate_pp']:+.2f} "
-            f"| {r['members_holm_sig_3of3']} |"
-        )
-    md_path.write_text("\n".join(lines) + "\n")
-    print(f"wrote {md_path}")
+    def build_rows(drop_degraded):
+        rows = []
+        for model, p in MODELS.items():
+            block = load(p)
+            conds = block["conditions"]
+            for fam, members in [("critical",   CRITICAL),
+                                 ("caa",        ["caa"]),
+                                 ("conformist", CONFORMIST),
+                                 ("null_control", ["random"])]:
+                degraded_members = [
+                    c for c in members
+                    if conds[c].get("degraded_any_seed")
+                ]
+                used = [c for c in members if not (
+                    drop_degraded and c in degraded_members)]
+                if not used:
+                    continue
+                logits = [conds[c]["delta_logit_mean"] for c in used]
+                rates  = [conds[c]["delta_rate_mean_pp"] for c in used]
+                sig3 = sum(
+                    1 for c in used
+                    if c != "random"
+                    and conds[c].get("n_significant_after_holm_per_seed") == 3
+                )
+                # In the core table we surface which members ARE degraded
+                # (kept but flagged). In the filtered table we surface
+                # which members were actually dropped.
+                if drop_degraded:
+                    marker = [c for c in members if c not in used]
+                else:
+                    marker = degraded_members
+                rows.append({
+                    "model": model,
+                    "family": fam,
+                    "n_conditions": len(members),
+                    "n_conditions_used": len(used),
+                    "n_seeds": 3,
+                    "family_mean_delta_logit": round(float(np.mean(logits)), 4),
+                    "family_mean_delta_rate_pp": round(float(np.mean(rates)), 3),
+                    "family_min_delta_logit": round(float(np.min(logits)), 4),
+                    "family_max_delta_logit": round(float(np.max(logits)), 4),
+                    "members_holm_sig_3of3": sig3,
+                    "degraded_members_excluded": ";".join(marker),
+                })
+        return rows
+
+    core_rows = build_rows(drop_degraded=False)
+    filt_rows = build_rows(drop_degraded=True)
+
+    def render(rows_in, csv_name, md_name, title, blurb):
+        csv_path = OUT / csv_name
+        with csv_path.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=fieldnames)
+            w.writeheader()
+            w.writerows(rows_in)
+        print(f"wrote {csv_path}  ({len(rows_in)} rows)")
+
+        md_path = OUT / md_name
+        lines = [
+            f"# {title}",
+            "",
+            blurb,
+            "",
+            "| Model | Family | n cond | n used | mean Δlogit | range "
+            "Δlogit | mean Δrate (pp) | Holm-sig 3/3 count | Degraded "
+            "excluded |",
+            "|---|---|---|---|---|---|---|---|---|",
+        ]
+        for r in rows_in:
+            excl = r["degraded_members_excluded"] or "—"
+            lines.append(
+                f"| {r['model']} | {r['family']} | {r['n_conditions']} "
+                f"| {r['n_conditions_used']} "
+                f"| {r['family_mean_delta_logit']:+.3f} "
+                f"| [{r['family_min_delta_logit']:+.3f}, "
+                f"{r['family_max_delta_logit']:+.3f}] "
+                f"| {r['family_mean_delta_rate_pp']:+.2f} "
+                f"| {r['members_holm_sig_3of3']} | {excl} |"
+            )
+        md_path.write_text("\n".join(lines) + "\n")
+        print(f"wrote {md_path}")
+
+    render(core_rows,
+           "conformist_vs_critical.csv",
+           "conformist_vs_critical.md",
+           "Family-level summary — critical vs conformist roles",
+           "Aggregated across the kept members of each family at their own "
+           "tune-locked coefficients. `members_holm_sig_3of3` counts how "
+           "many of the family's members reached Holm significance in all "
+           "3 test seeds. The `Degraded excluded` column lists any "
+           "members flagged as degraded (collapsed forward pass at the "
+           "locked coef); those members are retained in this core table "
+           "but dropped in the `_filtered` variant.")
+    render(filt_rows,
+           "conformist_vs_critical_filtered.csv",
+           "conformist_vs_critical_filtered.md",
+           "Family-level summary (degradation-filtered)",
+           "Same as the core table but any family member whose locked "
+           "coefficient is flagged as degraded in at least one test seed "
+           "is excluded from the family mean/min/max. This isolates "
+           "on-manifold steering responses from model-collapse artefacts.")
 
 
 def main():

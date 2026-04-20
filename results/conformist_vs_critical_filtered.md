@@ -1,6 +1,6 @@
-# Family-level summary — critical vs conformist roles
+# Family-level summary (degradation-filtered)
 
-Aggregated across the kept members of each family at their own tune-locked coefficients. `members_holm_sig_3of3` counts how many of the family's members reached Holm significance in all 3 test seeds. The `Degraded excluded` column lists any members flagged as degraded (collapsed forward pass at the locked coef); those members are retained in this core table but dropped in the `_filtered` variant.
+Same as the core table but any family member whose locked coefficient is flagged as degraded in at least one test seed is excluded from the family mean/min/max. This isolates on-manifold steering responses from model-collapse artefacts.
 
 | Model | Family | n cond | n used | mean Δlogit | range Δlogit | mean Δrate (pp) | Holm-sig 3/3 count | Degraded excluded |
 |---|---|---|---|---|---|---|---|---|
@@ -10,5 +10,5 @@ Aggregated across the kept members of each family at their own tune-locked coeff
 | gemma-2-27b-it | null_control | 1 | 1 | -0.254 | [-0.254, -0.254] | -2.07 | 0 | — |
 | qwen3-32b | critical | 3 | 3 | -1.931 | [-2.272, -1.699] | -13.04 | 3 | — |
 | qwen3-32b | caa | 1 | 1 | -1.965 | [-1.965, -1.965] | -20.89 | 1 | — |
-| qwen3-32b | conformist | 3 | 3 | -1.239 | [-2.979, -0.029] | -11.85 | 0 | pacifist |
+| qwen3-32b | conformist | 3 | 2 | -0.369 | [-0.709, -0.029] | -0.78 | 0 | pacifist |
 | qwen3-32b | null_control | 1 | 1 | -1.058 | [-1.058, -1.058] | -10.29 | 0 | — |

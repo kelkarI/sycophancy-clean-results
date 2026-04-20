@@ -53,12 +53,17 @@ sycophancy-clean-results/
 │   └── _style.py                              shared matplotlib + palette + labels
 ├── figures/
 │   ├── fig1_delta_logit.{pdf,png}             Δ sycophancy logit, paired bar
+│   ├── fig1_delta_logit_filtered.{pdf,png}    same, degraded cells dropped
 │   ├── fig2_delta_rate.{pdf,png}              Δ sycophancy rate (pp), paired bar
+│   ├── fig2_delta_rate_filtered.{pdf,png}     same, degraded cells dropped
 │   ├── fig3_per_seed.{pdf,png}                per-seed dot plot (consistency check)
+│   ├── fig3_per_seed_filtered.{pdf,png}       same, degraded cells dropped
 │   └── fig4_cosines.{pdf,png}                 6+1 cosine heatmap per model
 └── results/
-    ├── main_table.{csv,md}                    condition × model table
-    └── conformist_vs_critical.{csv,md}        family-level summary
+    ├── main_table.{csv,md}                    condition × model table (degraded rows flagged †)
+    ├── main_table_filtered.{csv,md}           same, degraded rows removed
+    ├── conformist_vs_critical.{csv,md}        family-level summary
+    └── conformist_vs_critical_filtered.{csv,md}  family means excluding degraded members
 ```
 
 ## Methods (summary)
@@ -90,6 +95,23 @@ sycophancy-clean-results/
   conditions are a subset of that family, so Holm significance carries
   over directly. We report how many of the 3 test seeds crossed
   α=0.05 after correction.
+- **Degradation handling.** At some large coefficients the steered
+  forward pass collapses — binary rate locks to 0.5 and the syc-logit
+  gap shrinks to zero — so a large |Δ| is a collapse artefact, not a
+  sycophancy reduction. The source pipeline writes a per-seed
+  `degradation_flags_test.json`; we copy that flag per (condition,
+  seed) into `data/*_clean.json` (`per_seed[i].degraded`) and expose
+  `degraded_any_seed` / `degraded_all_seeds` per condition. Tables and
+  figures come in two flavours:
+  - **Core** (`main_table.*`, `fig1-3.*`): every kept condition is
+    plotted, but degraded cells are hatched (bars) or overlaid with
+    red × (dots) and the row is flagged in the table.
+  - **Filtered** (`*_filtered.*`): any condition with
+    `degraded_any_seed == True` is dropped.
+
+  Only one cell is currently degraded at its tune-locked coef: **Qwen
+  3 32B × pacifist @ coef 500** (all 3 test seeds). Every other
+  (model, condition) stays on the non-degraded manifold.
 
 ## How to reproduce
 

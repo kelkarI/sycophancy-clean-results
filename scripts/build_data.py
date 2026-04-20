@@ -21,6 +21,7 @@ For each (model, kept condition) we emit per-seed:
   post_steer_logit, post_steer_rate
   delta_logit = post_steer_logit - baseline_logit (same seed)
   delta_rate_pp = (post_steer_rate - baseline_rate) * 100
+  degraded (bool; from source degradation_flags_test.json at best_coef)
 and aggregate across seeds:
   mean_delta_logit, std, 95% CI (t-distribution, df=2)
   mean_delta_rate_pp, std, CI
@@ -29,6 +30,8 @@ and aggregate across seeds:
                  of that family, so Holm significance carries over
                  directly)
   per_seed_wilcoxon_p_adj (Holm-adjusted per seed)
+  degraded_any_seed (bool; True if any test seed flagged the locked coef
+                     as degraded in the source pipeline's criterion)
 """
 import json
 import os
@@ -104,6 +107,22 @@ def load_model(name, root):
         p = root / f"results/seed_{s}/sycophancy_rates_test.json"
         per_seed_rates[s] = json.loads(p.read_text())
 
+    # per-seed degradation flags (used to mark cells where the steered
+    # forward pass has collapsed — e.g. uniform logits, binary rate 0.5 —
+    # so downstream readers can filter or mask them). Falls back to the
+    # aggregated top-level file if per-seed files are missing.
+    per_seed_degflags = {}
+    top_degflags = None
+    agg_path = root / "results/degradation_flags_test.json"
+    if agg_path.exists():
+        top_degflags = json.loads(agg_path.read_text())
+    for s in seeds:
+        p = root / f"results/seed_{s}/degradation_flags_test.json"
+        if p.exists():
+            per_seed_degflags[s] = json.loads(p.read_text())
+        else:
+            per_seed_degflags[s] = top_degflags
+
     # baseline per seed: coef=0 of any real condition (all identical by
     # construction — the baseline forward pass is the same)
     baselines_logit = []
@@ -122,6 +141,9 @@ def load_model(name, root):
         c = per_cond[cond]
         per_seed = []
         for i, seed in enumerate(seeds):
+            coef_key = f"{float(c['best_coefs'][i]):.1f}"
+            flag_src = per_seed_degflags.get(seed) or top_degflags or {}
+            degraded = bool(flag_src.get(cond, {}).get(coef_key, False))
             per_seed.append({
                 "seed": seed,
                 "best_coef": c["best_coefs"][i],
@@ -130,6 +152,7 @@ def load_model(name, root):
                 "delta_logit": c["logits"][i] - baselines_logit[i],
                 "delta_rate_pp": (c["rates"][i] - baselines_rate[i]) * 100,
                 "wilcoxon_p_adj": c["wilcoxon_p_adj"][i],
+                "degraded": degraded,
             })
         conds[cond] = {
             "condition": cond,
@@ -139,6 +162,8 @@ def load_model(name, root):
             "locked_best_coef_aggregate": float(bc.get(cond)),
             "per_seed": per_seed,
             "n_significant_after_holm_per_seed": c["n_significant"],
+            "degraded_any_seed": any(p["degraded"] for p in per_seed),
+            "degraded_all_seeds": all(p["degraded"] for p in per_seed),
         }
 
     # Random-control aggregate: per seed, take mean over random_0..9 at
@@ -181,6 +206,8 @@ def load_model(name, root):
                        "steering vectors at all 8 non-zero coefs (n=80 "
                        "per seed); aggregated across seeds.",
         "per_seed": per_seed_rand,
+        "degraded_any_seed": False,
+        "degraded_all_seeds": False,
     }
 
     return {
