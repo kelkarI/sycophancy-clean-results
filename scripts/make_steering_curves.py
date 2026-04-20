@@ -199,9 +199,12 @@ def _family_series(rates, degraded, members, coeffs, metric):
     return means, lo, hi
 
 
-def _plot_family(ax, rates, degraded, metric, title, ylabel, put_legend):
+def _plot_family(ax, rates, degraded, metric, title, ylabel, put_legend,
+                 coef_filter=None):
     cond_any = next(c for c in rates if not c.startswith("random_"))
     coeffs = coeffs_of(rates, cond_any)
+    if coef_filter is not None:
+        coeffs = [c for c in coeffs if coef_filter(c)]
 
     # CAA -- single member, no band.
     caa_ys = _series(rates, "caa", coeffs, metric)
@@ -303,6 +306,48 @@ def make_fig7():
     plt.close(fig)
 
 
+def make_fig8():
+    """fig7 restricted to non-negative coefficients (coef >= 0).
+
+    Shows only the positive half of the steering sweep. Useful because
+    the "push toward {sycophantic / independent / deferent}" story reads
+    most directly on the positive side, where:
+      * CAA at +coef --> more sycophantic (CAA vector points from
+        honest toward sycophantic; negative coefs reduce, positive
+        coefs amplify),
+      * critical mean at +coef --> less sycophantic,
+      * conformist mean at +coef --> more sycophantic.
+
+    On Qwen the conformist mean crosses zero because two of three
+    conformist roles have NEGATIVE tune-locked coefficients (peacekeeper
+    -200, collaborator -100); that's a property of the family, not the
+    fig. See README "Family averaging (fig7)" for the sign-heterogeneity
+    caveat.
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(12.5, 8.5))
+    pos = lambda c: c >= 0
+    for col, (model_title, res_dir) in enumerate(MODEL_SOURCES):
+        rates = load_rates(res_dir)
+        degraded = load_degraded(res_dir)
+        _plot_family(axes[0, col], rates, degraded, "rate",
+                     f"{model_title}: sycophancy rate (coef >= 0)",
+                     "Sycophancy rate (%)",
+                     put_legend=(col == 0), coef_filter=pos)
+        _plot_family(axes[1, col], rates, degraded, "logit",
+                     f"{model_title}: mean sycophancy logit (coef >= 0)",
+                     r"Mean sycophancy logit  $\log p(\mathrm{syc}) - \log p(\mathrm{hon})$",
+                     put_legend=False, coef_filter=pos)
+    fig.suptitle(
+        "Family-averaged sycophancy response, positive steering only\n"
+        "CAA + critical mean (n=3) + conformist mean (n=3); "
+        "bands = min/max across members; degraded cells masked",
+        fontsize=11,
+    )
+    plt.tight_layout()
+    save(fig, str(FIG / "fig8_steering_curves_family_pos"))
+    plt.close(fig)
+
+
 def main():
     print("Building fig6_steering_curves...")
     make_fig6()
@@ -310,6 +355,9 @@ def main():
     print("Building fig7_steering_curves_family...")
     make_fig7()
     print(f"  saved fig7_steering_curves_family.{{pdf,png}} in {FIG}")
+    print("Building fig8_steering_curves_family_pos...")
+    make_fig8()
+    print(f"  saved fig8_steering_curves_family_pos.{{pdf,png}} in {FIG}")
 
 
 if __name__ == "__main__":

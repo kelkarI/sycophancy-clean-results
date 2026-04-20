@@ -68,11 +68,15 @@ sycophancy-clean-results/
 │   │                                          kept conditions only (re-draws the
 │   │                                          source-pipeline fig1 without the
 │   │                                          dropped conditions)
-│   └── fig7_steering_curves_family.{pdf,png}  same sweep, three lines per model
-│                                              (CAA + critical mean + conformist
-│                                              mean) with min/max bands; degraded
-│                                              cells masked before averaging — see
-│                                              "Family averaging (fig7)" below
+│   ├── fig7_steering_curves_family.{pdf,png}  same sweep, three lines per model
+│   │                                          (CAA + critical mean + conformist
+│   │                                          mean) with min/max bands; degraded
+│   │                                          cells masked before averaging — see
+│   │                                          "Family averaging (fig7)" below
+│   └── fig8_steering_curves_family_pos.{pdf,png}  fig7 restricted to coef >= 0,
+│                                              i.e. the positive half of the
+│                                              sweep only (same averaging and
+│                                              masking rules as fig7)
 ├── qualitative/
 │   ├── qual_check_caa.json                    Gemma free-form responses,
 │   │                                          5 philosophy prompts × {baseline, caa,
@@ -183,6 +187,21 @@ aggregation rule is:
 
 The code path is `scripts/make_steering_curves.py:_family_series` (mean
 and min/max) and `_plot_family` (rendering).
+
+`fig8_steering_curves_family_pos` is the same plot restricted to
+`coef >= 0`. Reading the positive half alone is the most direct
+"push toward X" story:
+
+- CAA at `+coef` amplifies sycophancy (the CAA vector points from
+  honest toward sycophantic, so its tune-locked reduction coefficient
+  is negative; on the positive half CAA is the upward-going line).
+- Critical family mean at `+coef` reduces sycophancy.
+- Conformist family mean at `+coef` increases sycophancy on Gemma;
+  on Qwen it is roughly flat / slightly upward before the collapse at
+  coef = +500, because two of three Qwen conformist roles have
+  *negative* tune-locked coefficients (peacekeeper −200, collaborator
+  −100) and only pacifist pushes sycophancy up at +coef. fig7 shows
+  the full picture on both sides.
 
 ## Qualitative samples
 
