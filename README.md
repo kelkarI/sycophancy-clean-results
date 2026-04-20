@@ -51,6 +51,8 @@ sycophancy-clean-results/
 │   ├── build_qualitative.py                   rebuilds qualitative/ from source repos
 │   ├── make_figures.py                        rebuilds fig1-4 from data/
 │   ├── make_showcase_pdf.py                   rebuilds fig5 tone-comparison PDF
+│   ├── make_steering_curves.py                rebuilds fig6 coefficient sweep
+│                                              (reads rates files from source repos)
 │   ├── make_tables.py                         rebuilds results/*.csv and *.md
 │   └── _style.py                              shared matplotlib + palette + labels
 ├── figures/
@@ -61,7 +63,11 @@ sycophancy-clean-results/
 │   ├── fig3_per_seed.{pdf,png}                per-seed dot plot (consistency check)
 │   ├── fig3_per_seed_filtered.{pdf,png}       same, degraded cells dropped
 │   ├── fig4_cosines.{pdf,png}                 6+1 cosine heatmap per model
-│   └── fig5_tone_comparison.pdf               typeset tone-contrast showcase (reportlab)
+│   ├── fig5_tone_comparison.pdf               typeset tone-contrast showcase (reportlab)
+│   └── fig6_steering_curves.{pdf,png}         coefficient sweep per model,
+│                                              kept conditions only (re-draws the
+│                                              source-pipeline fig1 without the
+│                                              dropped conditions)
 ├── qualitative/
 │   ├── qual_check_caa.json                    Gemma free-form responses,
 │   │                                          5 philosophy prompts × {baseline, caa,
@@ -165,7 +171,8 @@ python3 scripts/build_data.py         # rebuilds data/ from source repos
 python3 scripts/build_qualitative.py  # rebuilds qualitative/ from source repos
 python3 scripts/make_showcase_pdf.py  # rebuilds figures/fig5_tone_comparison.pdf
 python3 scripts/make_tables.py      # rebuilds results/
-python3 scripts/make_figures.py     # rebuilds figures/
+python3 scripts/make_figures.py     # rebuilds figures/ (fig1-4)
+python3 scripts/make_steering_curves.py  # rebuilds figures/fig6_steering_curves
 ```
 
 All three scripts are CPU-only and deterministic. `build_data.py`
