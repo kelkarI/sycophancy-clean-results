@@ -1,10 +1,10 @@
 """Typeset a clean PDF of the qualitative tone showcase.
 
-Two representative held-out prompts — Gemma 2 27B on John Locke's
-empiricism and Qwen 3 32B on a chemistry professor's false claim —
-each decoded under baseline, CAA (targeted), Skeptic (critical), and
-Pacifist (conformist) at the tune-locked coefficients. Uses reportlab
-for real text layout instead of rasterised matplotlib text.
+One held-out Gemma 2 27B prompt (John Locke introducing himself as an
+empiricist and asking the model to take a side) decoded under every
+kept condition at its tune-locked coefficient. No numeric metrics in
+the body — just the free-form response and the model's A/B pick on the
+paired multiple-choice version of the same prompt.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer,
-    Table, TableStyle, PageBreak,
+    Table, TableStyle,
 )
 
 HERE = Path(__file__).resolve().parent.parent
@@ -29,6 +29,8 @@ FIGOUT = HERE / "figures"
 
 CRITICAL_BLUE  = colors.HexColor("#08519c")
 CONFORMIST_ORG = colors.HexColor("#f16913")
+CONFORMIST_2   = colors.HexColor("#d94801")
+CONFORMIST_3   = colors.HexColor("#fd8d3c")
 CAA_GRAY       = colors.HexColor("#4d4d4d")
 BASELINE_GRAY  = colors.HexColor("#555555")
 TEXT_DARK      = colors.HexColor("#1a1a1a")
@@ -37,11 +39,15 @@ RULE_LIGHT     = colors.HexColor("#cccccc")
 PROMPT_BG      = colors.HexColor("#f4f4f4")
 
 COND_STYLE = {
-    "baseline": ("Baseline (no steering)", "no steering",   BASELINE_GRAY),
-    "caa":      ("CAA (targeted)",          "targeted",      CAA_GRAY),
-    "skeptic":  ("Skeptic",                 "critical role", CRITICAL_BLUE),
-    "pacifist": ("Pacifist",                "conformist role", CONFORMIST_ORG),
+    "baseline":     ("Baseline",     "no steering",     BASELINE_GRAY),
+    "caa":          ("CAA",           "targeted",        CAA_GRAY),
+    "skeptic":      ("Skeptic",       "critical role",   CRITICAL_BLUE),
+    "peacekeeper":  ("Peacekeeper",   "conformist role", CONFORMIST_2),
+    "pacifist":     ("Pacifist",      "conformist role", CONFORMIST_ORG),
+    "collaborator": ("Collaborator",  "conformist role", CONFORMIST_3),
 }
+
+ORDER = ["baseline", "caa", "skeptic", "peacekeeper", "pacifist", "collaborator"]
 
 
 def _styles():
@@ -56,17 +62,16 @@ def _styles():
             "subtitle", parent=ss["Normal"], fontName="Times-Italic",
             fontSize=10.5, leading=13, textColor=TEXT_MUTED, spaceAfter=14,
         ),
-        "model_h": ParagraphStyle(
-            "model_h", parent=ss["Normal"], fontName="Times-Bold",
-            fontSize=13, leading=16, textColor=TEXT_DARK,
-            spaceBefore=8, spaceAfter=4,
-        ),
         "prompt_label": ParagraphStyle(
             "prompt_label", parent=ss["Normal"], fontName="Times-Italic",
             fontSize=9, leading=12, textColor=TEXT_MUTED,
         ),
         "prompt_body": ParagraphStyle(
             "prompt_body", parent=ss["Normal"], fontName="Times-Roman",
+            fontSize=10, leading=13, textColor=TEXT_DARK,
+        ),
+        "ab_line": ParagraphStyle(
+            "ab_line", parent=ss["Normal"], fontName="Times-Roman",
             fontSize=10, leading=13, textColor=TEXT_DARK,
         ),
         "cond_h": ParagraphStyle(
@@ -77,18 +82,13 @@ def _styles():
             "cond_h_sub", parent=ss["Normal"], fontName="Times-Italic",
             fontSize=8.5, leading=11, textColor=colors.white,
         ),
-        "badge": ParagraphStyle(
-            "badge", parent=ss["Normal"], fontName="Courier-Bold",
-            fontSize=9.5, leading=12, textColor=colors.white,
-            alignment=2,  # right
+        "pick": ParagraphStyle(
+            "pick", parent=ss["Normal"], fontName="Courier-Bold",
+            fontSize=9.5, leading=12, textColor=colors.white, alignment=2,
         ),
-        "badge_sub": ParagraphStyle(
-            "badge_sub", parent=ss["Normal"], fontName="Times-Italic",
+        "pick_sub": ParagraphStyle(
+            "pick_sub", parent=ss["Normal"], fontName="Times-Italic",
             fontSize=8.5, leading=11, textColor=colors.white, alignment=2,
-        ),
-        "signature": ParagraphStyle(
-            "signature", parent=ss["Normal"], fontName="Times-Bold",
-            fontSize=11, leading=14, textColor=TEXT_DARK, spaceAfter=4,
         ),
         "body": ParagraphStyle(
             "body", parent=ss["Normal"], fontName="Times-Roman",
@@ -103,59 +103,42 @@ def _styles():
 
 
 def _clean(s: str) -> str:
-    # replace common non-Latin glyphs Times-Roman can't render
     s = s.replace("\u2082", "2").replace("\u2083", "3").replace("\u2081", "1")
     return "".join(c for c in s if ord(c) < 0x2E80).strip()
 
 
-def _split_response(text: str, head_min: int = 70, head_max: int = 200):
-    """Signature opening sentence + continuation paragraph."""
-    import re
-    honorific = re.compile(r"\b(Mr|Mrs|Ms|Dr|Prof|St|Sr|Jr|H2O|e\.g|i\.e|vs)\.$")
+def _escape(s: str) -> str:
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;"))
+
+
+def _normalize(text: str) -> str:
     t = _clean(text).replace("\n\n", "  ").replace("\n", " ")
-    t = " ".join(t.split())
-    cut = -1
-    for m in re.finditer(r"[.!?](?=\s|$)", t):
-        end = m.end()
-        if end < head_min:
-            continue
-        if end > head_max:
-            break
-        if honorific.search(t[:end]):
-            continue
-        cut = end
-        break
-    if cut == -1:
-        head = t[:head_max].rsplit(" ", 1)[0] + " …"
-        tail_start = len(head)
-    else:
-        head = t[:cut].strip()
-        tail_start = cut
-    tail = t[tail_start:].strip()
-    if len(tail) > 900:
-        tail = tail[:900].rsplit(" ", 1)[0] + " …"
-    return head, tail
+    return " ".join(t.split())
 
 
-def _response_card(cond, r, metric_kind, styles, content_width):
+def _trim(text: str, limit: int = 1100) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0] + " …"
+
+
+def _response_card(cond, r, styles, content_width, syc_letter):
     label, family, color = COND_STYLE[cond]
-    if metric_kind == "syc_logit":
-        badge_top = f"syc_logit {r['syc_logit']:+.2f}"
-        badge_sub = f"coef {r['coefficient']:+.0f}   A/B pick = {r['chosen']}"
-    else:
-        badge_top = f"{r['category']}"
-        badge_sub = f"coef {r['coefficient']:+.0f}   correct = {r['correct']}"
-    if cond == "pacifist" and metric_kind == "category":
-        badge_top += "  \u00b7 DEGRADED"
+    chosen = r["chosen"]
+    agrees = (chosen == syc_letter)
+    pick_top = f"Model picked ({chosen})"
+    pick_sub = "agrees with user" if agrees else "disagrees with user"
 
     header_row = Table(
         [[
             [Paragraph(label, styles["cond_h"]),
              Paragraph(family, styles["cond_h_sub"])],
-            [Paragraph(badge_top, styles["badge"]),
-             Paragraph(badge_sub, styles["badge_sub"])],
+            [Paragraph(pick_top, styles["pick"]),
+             Paragraph(pick_sub, styles["pick_sub"])],
         ]],
-        colWidths=[content_width * 0.55, content_width * 0.45],
+        colWidths=[content_width * 0.6, content_width * 0.4],
     )
     header_row.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), color),
@@ -166,17 +149,9 @@ def _response_card(cond, r, metric_kind, styles, content_width):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
 
-    head, tail = _split_response(r["response"])
-    sig_style = ParagraphStyle(
-        "sig_" + cond, parent=styles["signature"], textColor=color,
-    )
-    body_flow = [
-        Paragraph(_escape(head), sig_style),
-        Paragraph(_escape(tail), styles["body"]) if tail else Spacer(1, 0.02 * inch),
-    ]
-
+    body_text = _trim(_normalize(r["response"]))
     body_table = Table(
-        [[body_flow]],
+        [[Paragraph(_escape(body_text), styles["body"])]],
         colWidths=[content_width],
     )
     body_table.setStyle(TableStyle([
@@ -189,22 +164,27 @@ def _response_card(cond, r, metric_kind, styles, content_width):
         ("LINELEFT", (0, 0), (-1, -1), 2, color),
     ]))
 
-    return [header_row, body_table, Spacer(1, 0.12 * inch)]
+    return [header_row, body_table, Spacer(1, 0.1 * inch)]
 
 
-def _escape(s: str) -> str:
-    return (s.replace("&", "&amp;")
-             .replace("<", "&lt;")
-             .replace(">", "&gt;"))
-
-
-def _prompt_block(prompt_text, styles, content_width):
-    body = _clean(prompt_text)
-    body = " ".join(body.split())
+def _prompt_block(prompt_text, styles, content_width, syc_letter):
+    body = _normalize(prompt_text)
+    # Strip the trailing "Answer:" scaffold from prompt_ab for display.
+    if body.endswith("Answer:"):
+        body = body[: -len("Answer:")].rstrip()
+    hint = (
+        f"The sycophantic choice here is ({syc_letter}) — it matches the "
+        "user's stated view. Each card below shows which option the model "
+        "picked under that steering condition."
+    )
     t = Table(
-        [[[Paragraph("User prompt", styles["prompt_label"]),
-           Spacer(1, 2),
-           Paragraph(_escape(body), styles["prompt_body"])]]],
+        [[[
+            Paragraph("User prompt (paired A/B version)", styles["prompt_label"]),
+            Spacer(1, 2),
+            Paragraph(_escape(body), styles["prompt_body"]),
+            Spacer(1, 6),
+            Paragraph(_escape(hint), styles["prompt_label"]),
+        ]]],
         colWidths=[content_width],
     )
     t.setStyle(TableStyle([
@@ -218,41 +198,17 @@ def _prompt_block(prompt_text, styles, content_width):
     return t
 
 
-def _model_page(model_header, prompt, responses, order, metric_kind,
-                styles, content_width):
-    flow = [
-        Paragraph(model_header, styles["model_h"]),
-        _prompt_block(prompt, styles, content_width),
-        Spacer(1, 0.18 * inch),
-    ]
-    for cond in order:
-        if cond not in responses:
-            continue
-        flow.extend(_response_card(cond, responses[cond], metric_kind,
-                                   styles, content_width))
-    return flow
-
-
 def main() -> None:
     styles = _styles()
 
     caa = json.loads((QUAL / "qual_check_caa.json").read_text())
     conf = json.loads((QUAL / "qual_check_conformist.json").read_text())
-    gemma_by = defaultdict(dict)
+    by = defaultdict(dict)
     for r in caa["results"] + conf["results"]:
-        gemma_by[r["qi"]][r["condition"]] = r
-    gemma_row = gemma_by[2]
-    gemma_prompt = gemma_row["baseline"]["prompt_ab"]
-
-    qw = json.loads((QUAL / "qwen3-32b_over_correction.json").read_text())
-    qwen_by = defaultdict(dict)
-    for r in qw["per_probe_results"]:
-        qwen_by[r["topic"]][r["condition"]] = r
-    qwen_row = qwen_by["chemistry (false)"]
-    qwen_prompt = [p for p in qw["probes"]
-                   if p["topic"] == "chemistry (false)"][0]["prompt"]
-
-    order = ["baseline", "caa", "skeptic", "pacifist"]
+        by[r["qi"]][r["condition"]] = r
+    row = by[2]  # John Locke / empiricism
+    prompt = row["baseline"]["prompt_ab"]
+    syc_letter = row["baseline"]["sycophantic_answer"]
 
     page_w, page_h = LETTER
     margin = 0.6 * inch
@@ -275,31 +231,31 @@ def main() -> None:
     flow = [
         Paragraph("How steering changes tone", styles["title"]),
         Paragraph(
-            "One representative held-out prompt per model, decoded at each "
-            "condition's tune-locked coefficient. Bold = signature opening "
-            "sentence. Gemma metric is <font face='Courier'>syc_logit</font> "
-            "(= logp(syc) − logp(hon)) on the A/B continuation — lower is "
-            "less sycophantic. Qwen metric is the over-correction auto-"
-            "category from the sycophancy-qwen pipeline.",
+            "Gemma 2 27B decoding the same held-out prompt under every kept "
+            "condition at its tune-locked coefficient. The user (\"John "
+            "Locke\") introduces himself as an empiricist and asks the model "
+            "to take a side — agreeing with the user is the sycophantic "
+            "choice. The free-form response is what the model says; the "
+            "colored badge shows the A/B pick under the paired multiple-"
+            "choice version of the same prompt.",
             styles["subtitle"],
         ),
+        _prompt_block(prompt, styles, content_width, syc_letter),
+        Spacer(1, 0.18 * inch),
     ]
-    flow.extend(_model_page(
-        "Gemma 2 27B \u00b7 John Locke's empiricism",
-        gemma_prompt, gemma_row, order, "syc_logit",
-        styles, content_width,
-    ))
-    flow.append(PageBreak())
-    flow.extend(_model_page(
-        "Qwen 3 32B \u00b7 chemistry professor, false claim",
-        qwen_prompt, qwen_row, order, "category",
-        styles, content_width,
-    ))
+    for cond in ORDER:
+        if cond in row:
+            flow.extend(_response_card(cond, row[cond], styles,
+                                       content_width, syc_letter))
+
     flow.append(Paragraph(
-        "Full responses: qualitative/gemma_showcase.md, qualitative/qwen_showcase.md. "
-        "Degradation flag = collapsed forward pass at the locked coefficient "
-        "(rate locks to 0.5, syc-logit gap shrinks to zero, free-form text "
-        "becomes a repetition loop).",
+        "Critical-role steering (Skeptic) pushes the open response toward "
+        "disagreement even when the A/B pick on this single probe still "
+        "lands on (A); conformist-role steering (Peacekeeper, Pacifist, "
+        "Collaborator) keeps the flattering agreement. Per-base aggregates "
+        "across 150 bases \u00d7 3 test seeds are what establish the "
+        "family-level effect — see figures/fig1_delta_logit.pdf and "
+        "results/main_table.md.",
         styles["footer"],
     ))
 
