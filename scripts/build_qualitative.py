@@ -75,8 +75,8 @@ def _copy_gemma_qual() -> None:
             (OUT / name).write_text(src.read_text())
 
 
-def _render_gemma_showcase(qi: int = 4) -> None:
-    """Render the John-Smith-classical-logic prompt across conditions."""
+def _render_gemma_showcase(qi: int = 2) -> None:
+    """Render the John-Locke-empiricism prompt across conditions."""
     caa = json.loads((OUT / "qual_check_caa.json").read_text())
     conf = json.loads((OUT / "qual_check_conformist.json").read_text())
     by = defaultdict(dict)
@@ -171,16 +171,16 @@ def _render_qwen_showcase() -> None:
 
 
 def _make_tone_figure() -> None:
-    """2x4 card grid of response snippets across conditions on both models."""
+    """Readable card layout: one prompt per model, 4 responses stacked."""
     try:
         import matplotlib.pyplot as plt
-        from matplotlib.patches import FancyBboxPatch
+        from matplotlib.patches import FancyBboxPatch, Rectangle
     except ImportError:
         print("matplotlib not available; skipping figure")
         return
     import sys
     sys.path.insert(0, str(HERE / "scripts"))
-    from _style import PALETTE, LABELS, save  # noqa: E402
+    from _style import PALETTE, save  # noqa: E402
 
     caa = json.loads((OUT / "qual_check_caa.json").read_text())
     conf = json.loads((OUT / "qual_check_conformist.json").read_text())
@@ -192,78 +192,156 @@ def _make_tone_figure() -> None:
     for r in qw["per_probe_results"]:
         qwen_by[r["topic"]][r["condition"]] = r
 
-    gemma_row = gemma_by[4]
-    qwen_row = qwen_by["arithmetic"]
-    cols = ["baseline", "caa", "skeptic", "pacifist"]
-    col_titles = ["Baseline (no steering)", "CAA (targeted)",
-                  "Skeptic (critical)", "Pacifist (conformist)"]
-    palette = {
-        "baseline": "#666666",
-        "caa": PALETTE["caa"],
-        "skeptic": PALETTE["skeptic"],
-        "pacifist": PALETTE["pacifist"],
+    # Representative prompts:
+    # Gemma qi=2 (John Locke): baseline "knowledge aligns with your empiricist perspective"
+    # → caa "the question is complex" → skeptic "I must respectfully disagree"
+    # → pacifist "profound agreement". All four tones are signature-phrase visible.
+    # Qwen chemistry-false: baseline/caa hedge-correct, skeptic explicit refuse,
+    # pacifist degenerates into a repetition loop (the locked-coef collapse).
+    gemma_row = gemma_by[2]
+    qwen_row = qwen_by["chemistry (false)"]
+    gemma_prompt = gemma_row["baseline"]["prompt_ab"]
+    qwen_prompt = [p for p in qw["probes"] if p["topic"] == "chemistry (false)"][0]["prompt"]
+
+    order = ["baseline", "caa", "skeptic", "pacifist"]
+    pretty = {
+        "baseline":  ("Baseline (no steering)",   "—",          "#555555"),
+        "caa":       ("CAA (targeted)",           "targeted",   PALETTE["caa"]),
+        "skeptic":   ("Skeptic",                  "critical",   PALETTE["skeptic"]),
+        "pacifist":  ("Pacifist",                 "conformist", PALETTE["pacifist"]),
     }
 
-    def _snippet(text: str, n_chars: int = 340) -> str:
-        t = text.strip().replace("\n\n", " ¶ ").replace("\n", " ")
-        # strip characters outside the BMP range that the serif font can't render
-        t = "".join(c for c in t if ord(c) < 0x2E80)
-        if len(t) > n_chars:
-            t = t[: n_chars].rsplit(" ", 1)[0] + " …"
-        return textwrap.fill(t, width=48)
+    def _clean(s: str) -> str:
+        return "".join(c for c in s if ord(c) < 0x2E80).strip()
 
-    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
-    model_rows = [("Gemma 2 27B", "Prof. John Smith: classical vs non-classical logic",
-                   gemma_row, "syc_logit"),
-                  ("Qwen 3 32B", "Math teacher: '2 + 2 = 4, do you agree?'",
-                   qwen_row, "category")]
-    for row_i, (model_title, prompt_title, row, metric) in enumerate(model_rows):
-        for col_i, cond in enumerate(cols):
-            ax = axes[row_i, col_i]
-            ax.set_xticks([]); ax.set_yticks([])
-            for side in ("top", "right", "bottom", "left"):
-                ax.spines[side].set_visible(False)
-            ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-            ax.grid(False)
-            r = row.get(cond)
-            if r is None:
-                ax.text(0.5, 0.5, "(not recorded)", ha="center", va="center",
-                        color="#999", fontsize=10)
+    import re
+    _HONORIFIC = re.compile(r"\b(Mr|Mrs|Ms|Dr|Prof|St|Sr|Jr|H2O|e\.g|i\.e|vs)\.$")
+
+    def _split_two(text: str, head_min: int = 70, head_max: int = 180, body_chars: int = 320):
+        """Pull the signature opening sentence, then the next sentence(s)."""
+        t = _clean(text).replace("\n\n", "  ").replace("\n", " ")
+        t = " ".join(t.split())
+        # scan for sentence-ending . ! ? that isn't an honorific / abbreviation
+        cut = -1
+        for m in re.finditer(r"[.!?](?=\s|$)", t):
+            end = m.end()
+            if end < head_min:
                 continue
-            color = palette[cond]
-            bar = FancyBboxPatch((0, 0.93), 1, 0.07,
-                                 boxstyle="round,pad=0,rounding_size=0.01",
-                                 linewidth=0, facecolor=color)
-            ax.add_patch(bar)
-            head = f"{col_titles[col_i]}   coef={r['coefficient']:+.0f}"
-            ax.text(0.02, 0.965, head, color="white", fontsize=10,
-                    fontweight="bold", va="center")
-            if metric == "syc_logit":
-                sub = f"syc_logit = {r['syc_logit']:+.2f}   (A/B = {r['chosen']})"
-            else:
-                sub = f"category = {r['category']}   correct = {r['correct']}"
-            if cond == "pacifist" and row_i == 1:
-                sub += "    [DEGRADED]"
-            ax.text(0.02, 0.88, sub, color=color, fontsize=9,
-                    fontweight="bold", va="top")
-            ax.text(0.02, 0.82, _snippet(r["response"]),
-                    color="#222", fontsize=8.3, va="top", wrap=True,
-                    family="serif")
-        axes[row_i, 0].text(-0.05, 0.5,
-                            f"{model_title}\n{prompt_title}",
-                            transform=axes[row_i, 0].transAxes,
-                            rotation=90, va="center", ha="center",
-                            fontsize=10, fontstyle="italic", color="#444")
+            if end > head_max:
+                break
+            prefix = t[:end]
+            if _HONORIFIC.search(prefix):
+                continue
+            cut = end
+            break
+        if cut == -1:
+            head = t[:head_max].rsplit(" ", 1)[0] + " …"
+            tail_start = len(head)
+        else:
+            head = t[:cut].strip()
+            tail_start = cut
+        tail = t[tail_start:].strip()
+        if len(tail) > body_chars:
+            tail = tail[:body_chars].rsplit(" ", 1)[0] + " …"
+        return head, tail
+
+    import textwrap
+
+    fig = plt.figure(figsize=(16, 15))
+    gs = fig.add_gridspec(
+        nrows=6, ncols=2,
+        height_ratios=[0.6, 1.0, 1.0, 1.0, 1.0, 0.08],
+        hspace=0.22, wspace=0.10,
+        left=0.04, right=0.98, top=0.94, bottom=0.02,
+    )
+
+    def _prompt_panel(ax, model_name, prompt_text):
+        ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+        ax.set_xticks([]); ax.set_yticks([])
+        for s in ("top","right","bottom","left"):
+            ax.spines[s].set_visible(False)
+        ax.grid(False)
+        ax.add_patch(Rectangle((0,0),1,1, facecolor="#f5f5f5",
+                               edgecolor="#cccccc", linewidth=0.8))
+        ax.text(0.015, 0.92, model_name, fontsize=13, fontweight="bold",
+                va="top", color="#111")
+        ax.text(0.015, 0.70, "User prompt", fontsize=9, va="top",
+                color="#888", fontstyle="italic")
+        body = _clean(prompt_text)
+        # collapse whitespace and truncate for display
+        body = " ".join(body.split())
+        if len(body) > 420:
+            body = body[:420].rsplit(" ", 1)[0] + " …"
+        wrapped = textwrap.fill(body, width=95)
+        ax.text(0.015, 0.57, wrapped, fontsize=9.5, va="top", color="#222",
+                family="serif")
+
+    def _response_panel(ax, cond, r, metric_kind):
+        ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+        ax.set_xticks([]); ax.set_yticks([])
+        for s in ("top","right","bottom","left"):
+            ax.spines[s].set_visible(False)
+        ax.grid(False)
+        label, family, color = pretty[cond]
+        ax.add_patch(Rectangle((0,0),1,1, facecolor="white",
+                               edgecolor="#dddddd", linewidth=0.8))
+        ax.add_patch(Rectangle((0,0), 0.012, 1, facecolor=color, linewidth=0))
+        ax.add_patch(Rectangle((0.012,0.82), 0.988, 0.18,
+                               facecolor=color, linewidth=0, alpha=0.92))
+        ax.text(0.03, 0.93, label, fontsize=12, fontweight="bold",
+                color="white", va="center")
+        ax.text(0.03, 0.855, family, fontsize=8.5, color="white",
+                va="center", fontstyle="italic", alpha=0.95)
+        if metric_kind == "syc_logit":
+            badge = f"syc_logit {r['syc_logit']:+.2f}"
+            badge2 = f"coef {r['coefficient']:+.0f}   A/B = {r['chosen']}"
+        else:
+            badge = f"{r['category']}"
+            badge2 = f"coef {r['coefficient']:+.0f}   correct = {r['correct']}"
+        if cond == "pacifist" and metric_kind == "category":
+            badge += "  · DEGRADED"
+        ax.text(0.985, 0.93, badge, fontsize=10.5, fontweight="bold",
+                color="white", ha="right", va="center",
+                family="monospace")
+        ax.text(0.985, 0.855, badge2, fontsize=8.5,
+                color="white", ha="right", va="center",
+                fontstyle="italic", alpha=0.95)
+        head, tail = _split_two(r["response"])
+        head_wrapped = textwrap.fill(head, width=84)
+        tail_wrapped = textwrap.fill(tail, width=96)
+        n_head_lines = head_wrapped.count("\n") + 1
+        ax.text(0.025, 0.73, head_wrapped, fontsize=11, fontweight="bold",
+                color=color, va="top", family="serif", linespacing=1.25)
+        tail_y = 0.73 - 0.075 * n_head_lines - 0.02
+        ax.text(0.025, tail_y, tail_wrapped, fontsize=9.5,
+                color="#333", va="top", family="serif", linespacing=1.3)
+
+    _prompt_panel(fig.add_subplot(gs[0, 0]),
+                  "Gemma 2 27B  ·  John Locke / empiricism", gemma_prompt)
+    _prompt_panel(fig.add_subplot(gs[0, 1]),
+                  "Qwen 3 32B  ·  Chemistry professor (false claim)", qwen_prompt)
+    for i, cond in enumerate(order):
+        _response_panel(fig.add_subplot(gs[i + 1, 0]),
+                        cond, gemma_row[cond], "syc_logit")
+        _response_panel(fig.add_subplot(gs[i + 1, 1]),
+                        cond, qwen_row[cond], "category")
 
     fig.suptitle(
-        "Tone under steering at tune-locked coefficients — one held-out prompt per model",
-        fontsize=12, y=0.995,
+        "How steering changes tone — one representative prompt per model, "
+        "each condition at its tune-locked coefficient",
+        fontsize=14, fontweight="bold", y=0.985,
     )
-    fig.text(0.5, 0.02,
-             "Snippets are the first ~340 characters of the decoded response. "
-             "Full text in qualitative/{gemma,qwen}_showcase.md.",
-             ha="center", color="#666", fontsize=8.5, fontstyle="italic")
-    fig.tight_layout(rect=(0.02, 0.04, 1, 0.98))
+    footer = fig.add_subplot(gs[5, :])
+    footer.axis("off")
+    footer.text(
+        0.5, 0.5,
+        "Bold = opening sentence (tone signature). "
+        "Gemma metric = syc_logit on the A/B continuation (lower is less sycophantic). "
+        "Qwen metric = auto-category from sycophancy-qwen pipeline. "
+        "Full text in qualitative/{gemma,qwen}_showcase.md.",
+        ha="center", va="center", fontsize=9, color="#666",
+        fontstyle="italic",
+    )
     save(fig, str(FIGOUT / "fig5_tone_comparison"))
     plt.close(fig)
 
