@@ -48,8 +48,9 @@ sycophancy-clean-results/
 │   └── qwen3-32b_cosines.json                 same, Qwen
 ├── scripts/
 │   ├── build_data.py                          rebuilds data/ from source repos
-│   ├── build_qualitative.py                   rebuilds qualitative/ + fig5 from source repos
-│   ├── make_figures.py                        rebuilds figures/ from data/
+│   ├── build_qualitative.py                   rebuilds qualitative/ from source repos
+│   ├── make_figures.py                        rebuilds fig1-4 from data/
+│   ├── make_showcase_pdf.py                   rebuilds fig5 tone-comparison PDF
 │   ├── make_tables.py                         rebuilds results/*.csv and *.md
 │   └── _style.py                              shared matplotlib + palette + labels
 ├── figures/
@@ -60,7 +61,7 @@ sycophancy-clean-results/
 │   ├── fig3_per_seed.{pdf,png}                per-seed dot plot (consistency check)
 │   ├── fig3_per_seed_filtered.{pdf,png}       same, degraded cells dropped
 │   ├── fig4_cosines.{pdf,png}                 6+1 cosine heatmap per model
-│   └── fig5_tone_comparison.{pdf,png}         2×4 qualitative card grid
+│   └── fig5_tone_comparison.pdf               typeset tone-contrast showcase (reportlab)
 ├── qualitative/
 │   ├── qual_check_caa.json                    Gemma free-form responses,
 │   │                                          5 philosophy prompts × {baseline, caa,
@@ -147,17 +148,22 @@ collects two kinds of samples:
 
 `gemma_showcase.md` and `qwen_showcase.md` render one representative
 prompt per model across the kept conditions so the tone shift is
-readable without opening a JSON. `figures/fig5_tone_comparison.{pdf,png}`
-lays the two model rows side by side across baseline / CAA / skeptic /
-pacifist — including the model-collapse loop on Qwen × pacifist @ +500,
-which is what the `degraded` flag looks like in free text.
+readable without opening a JSON. `figures/fig5_tone_comparison.pdf`
+is a typeset (reportlab) tone-comparison document: John Locke's
+empiricism prompt on Gemma and a chemistry professor's false claim on
+Qwen, each decoded at baseline / CAA / skeptic / pacifist. Signature
+opening sentences are bolded — both skeptics open with "I must
+respectfully disagree", both baselines with flattery. Qwen × pacifist
+@ +500 is the one cell flagged `degraded`; you can see the collapsed
+forward pass as a repetition loop in free text.
 
 ## How to reproduce
 
 ```bash
 cd sycophancy-clean-results
 python3 scripts/build_data.py         # rebuilds data/ from source repos
-python3 scripts/build_qualitative.py  # rebuilds qualitative/ + fig5 from source repos
+python3 scripts/build_qualitative.py  # rebuilds qualitative/ from source repos
+python3 scripts/make_showcase_pdf.py  # rebuilds figures/fig5_tone_comparison.pdf
 python3 scripts/make_tables.py      # rebuilds results/
 python3 scripts/make_figures.py     # rebuilds figures/
 ```
