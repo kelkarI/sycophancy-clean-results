@@ -405,5 +405,188 @@
       "degraded_any_seed": false,
       "degraded_all_seeds": false
     }
+  },
+  "dropped_conditions_for_transparency": {
+    "__doc__": "Conditions present in the source pipeline but EXCLUDED from the clean-results headline (they do NOT appear in main_table.{csv,md} or any of the figures). Included here so that readers can see their values and judge whether the curation principle ('expected direction per role family at tune-locked coefficient') is being applied consistently. Of particular note: `facilitator` is grouped as a conformist role but its tune-locked best coefficient REDUCES sycophancy on both models -- a counter-example to the bidirectionality narrative. See README.md \u00a7Scope and AUDIT_NOTES.md.",
+    "assistant_axis": {
+      "condition": "assistant_axis",
+      "family_per_source_pipeline": "broad_axis",
+      "locked_best_coef_aggregate": 200.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": 200.0,
+          "post_steer_logit": 0.5722916626930237,
+          "post_steer_rate": 0.6233333333333333,
+          "delta_logit": -2.451875009536743,
+          "delta_rate_pp": -21.333333333333336,
+          "wilcoxon_p_adj": 1.6430997833803619e-19
+        },
+        {
+          "seed": 42,
+          "best_coef": 200.0,
+          "post_steer_logit": 0.5177083532015483,
+          "post_steer_rate": 0.6566666666666666,
+          "delta_logit": -2.3043749674161274,
+          "delta_rate_pp": -16.666666666666675,
+          "wilcoxon_p_adj": 2.479691591628724e-19
+        },
+        {
+          "seed": 7,
+          "best_coef": 200.0,
+          "post_steer_logit": 0.679583326180776,
+          "post_steer_rate": 0.6833333333333333,
+          "delta_logit": -2.473750009536743,
+          "delta_rate_pp": -17.666666666666664,
+          "wilcoxon_p_adj": 3.5056121090403094e-20
+        }
+      ],
+      "delta_logit_mean": -2.409999995496538,
+      "delta_logit_std": 0.09212553296448611,
+      "delta_logit_ci95_lo": -2.6388525061573227,
+      "delta_logit_ci95_hi": -2.1811474848357535,
+      "delta_rate_mean_pp": -18.55555555555556,
+      "delta_rate_std_pp": 2.4570382652773297,
+      "delta_rate_ci95_lo_pp": -24.65917696977413,
+      "delta_rate_ci95_hi_pp": -12.451934141336992,
+      "n_significant_after_holm_per_seed": 3,
+      "n_seeds": 3,
+      "exclusion_reason": "Not a role direction; it is the underlying broad assistant-vs-non-assistant axis. Excluded so the headline focuses on named persona roles."
+    },
+    "contrarian": {
+      "condition": "contrarian",
+      "family_per_source_pipeline": "critical",
+      "locked_best_coef_aggregate": -200.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": -200.0,
+          "post_steer_logit": 0.7031250063578288,
+          "post_steer_rate": 0.6833333333333333,
+          "delta_logit": -2.3210416658719377,
+          "delta_rate_pp": -15.333333333333332,
+          "wilcoxon_p_adj": 2.9693128035875663e-18
+        },
+        {
+          "seed": 42,
+          "best_coef": -200.0,
+          "post_steer_logit": 0.6683333222071329,
+          "post_steer_rate": 0.6666666666666666,
+          "delta_logit": -2.1537499984105426,
+          "delta_rate_pp": -15.666666666666673,
+          "wilcoxon_p_adj": 1.1742541729597168e-17
+        },
+        {
+          "seed": 7,
+          "best_coef": -200.0,
+          "post_steer_logit": 0.8041666714350383,
+          "post_steer_rate": 0.7133333333333334,
+          "delta_logit": -2.349166664282481,
+          "delta_rate_pp": -14.66666666666666,
+          "wilcoxon_p_adj": 7.157115214548757e-19
+        }
+      ],
+      "delta_logit_mean": -2.2746527761883204,
+      "delta_logit_std": 0.10564499580995451,
+      "delta_logit_ci95_lo": -2.537089494347404,
+      "delta_logit_ci95_hi": -2.012216058029237,
+      "delta_rate_mean_pp": -15.222222222222223,
+      "delta_rate_std_pp": 0.5091750772173215,
+      "delta_rate_ci95_lo_pp": -16.487083233468727,
+      "delta_rate_ci95_hi_pp": -13.95736121097572,
+      "n_significant_after_holm_per_seed": 3,
+      "n_seeds": 3,
+      "exclusion_reason": "Critical-family role whose standalone-residual reduction fails Holm-correction on Gemma (raw p=0.020, Holm p=0.072 across 14-condition family). Excluded to make the cross-model 'critical roles reduce' story cleaner. Re-included here so the exclusion can be assessed."
+    },
+    "scientist": {
+      "condition": "scientist",
+      "family_per_source_pipeline": "critical",
+      "locked_best_coef_aggregate": -100.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": -100.0,
+          "post_steer_logit": 1.9679166634877523,
+          "post_steer_rate": 0.7866666666666666,
+          "delta_logit": -1.0562500087420144,
+          "delta_rate_pp": -5.000000000000004,
+          "wilcoxon_p_adj": 7.585917613787059e-12
+        },
+        {
+          "seed": 42,
+          "best_coef": -100.0,
+          "post_steer_logit": 1.8845833047231038,
+          "post_steer_rate": 0.76,
+          "delta_logit": -0.9375000158945719,
+          "delta_rate_pp": -6.333333333333336,
+          "wilcoxon_p_adj": 5.041266617151377e-10
+        },
+        {
+          "seed": 7,
+          "best_coef": -100.0,
+          "post_steer_logit": 2.196041656732559,
+          "post_steer_rate": 0.78,
+          "delta_logit": -0.9572916789849599,
+          "delta_rate_pp": -7.9999999999999964,
+          "wilcoxon_p_adj": 7.761081097118319e-11
+        }
+      ],
+      "delta_logit_mean": -0.9836805678738486,
+      "delta_logit_std": 0.06362130376618746,
+      "delta_logit_ci95_lo": -1.1417246478361018,
+      "delta_logit_ci95_hi": -0.8256364879115954,
+      "delta_rate_mean_pp": -6.4444444444444455,
+      "delta_rate_std_pp": 1.5030832509409606,
+      "delta_rate_ci95_lo_pp": -10.178310232147592,
+      "delta_rate_ci95_hi_pp": -2.7105786567412986,
+      "n_significant_after_holm_per_seed": 3,
+      "n_seeds": 3,
+      "exclusion_reason": "Critical-family role whose tune-locked coefficient is +ve on Gemma (+2000) but -ve on Qwen (-100), breaking the within-family sign symmetry. Excluded for narrative cleanliness. Re-included here for completeness."
+    },
+    "facilitator": {
+      "condition": "facilitator",
+      "family_per_source_pipeline": "conformist",
+      "locked_best_coef_aggregate": -200.0,
+      "per_seed": [
+        {
+          "seed": 123,
+          "best_coef": -200.0,
+          "post_steer_logit": 2.6493749849001564,
+          "post_steer_rate": 0.8433333333333334,
+          "delta_logit": -0.3747916873296102,
+          "delta_rate_pp": 0.666666666666671,
+          "wilcoxon_p_adj": 1.0
+        },
+        {
+          "seed": 42,
+          "best_coef": -200.0,
+          "post_steer_logit": 2.2504166718324026,
+          "post_steer_rate": 0.8266666666666667,
+          "delta_logit": -0.5716666487852731,
+          "delta_rate_pp": 0.33333333333332993,
+          "wilcoxon_p_adj": 1.0
+        },
+        {
+          "seed": 7,
+          "best_coef": -200.0,
+          "post_steer_logit": 2.693958343466123,
+          "post_steer_rate": 0.8333333333333334,
+          "delta_logit": -0.4593749922513961,
+          "delta_rate_pp": -2.6666666666666616,
+          "wilcoxon_p_adj": 1.0
+        }
+      ],
+      "delta_logit_mean": -0.46861110945542644,
+      "delta_logit_std": 0.09876192083894038,
+      "delta_logit_ci95_lo": -0.7139493215055657,
+      "delta_logit_ci95_hi": -0.22327289740528725,
+      "delta_rate_mean_pp": -0.5555555555555536,
+      "delta_rate_std_pp": 1.835856849095365,
+      "delta_rate_ci95_lo_pp": -5.1160767879399955,
+      "delta_rate_ci95_hi_pp": 4.004965676828888,
+      "n_significant_after_holm_per_seed": 0,
+      "n_seeds": 3,
+      "exclusion_reason": "Conformist-family role whose tune-locked best coefficient *reduces* sycophancy on both models (Gemma -0.727, Qwen -0.469), opposite to the bidirectionality prediction for conformist roles. Neither effect reaches Holm significance per-seed on the 14-condition family. Excluded from the headline; re-included here as the most important counter-example."
+    }
   }
 }

@@ -1,11 +1,18 @@
 # Clean results — sycophancy steering on Gemma 2 27B and Qwen 3 32B
 
 A standalone post-hoc package of the main paper result only: critical
-role directions reduce sycophancy, conformist role directions do not,
-and a general persona direction approaches the effect of the targeted
-CAA direction that was trained on sycophancy labels. Everything in
-this repo is derived from existing experiment outputs (no re-running
-of model inference).
+role directions reduce sycophancy, conformist role directions are
+mixed (one increases, one is flat, one reduces, one is degraded — see
+§Scope below), and a general persona direction approaches the effect
+of the targeted CAA direction that was trained on sycophancy labels.
+Everything in this repo is derived from existing experiment outputs
+(no re-running of model inference).
+
+> **Audit note.** A peer-review audit (`AUDIT_NOTES.md`) added per-drop
+> rationale below, surfaced the dropped conditions inside the data JSONs
+> (under `dropped_conditions_for_transparency`), and clarified the Holm
+> family-size statement. The headline findings and `data/{model}_clean.json["conditions"]`
+> are unchanged.
 
 Source repositories (read only, not modified):
 
@@ -35,6 +42,40 @@ Source repositories (read only, not modified):
 Dropping these leaves a single-question focus: does a role vector
 reduce sycophancy at its tune-locked steering coefficient, and is the
 effect in the expected direction per role family?
+
+**Per-drop rationale** (added in audit, see `AUDIT_NOTES.md`):
+
+| Dropped | Family | Δ logit at locked coef | Why dropped |
+|---|---|---|---|
+| `assistant_axis` | broad axis | Gemma −0.375, Qwen −2.410 | Not a role per se; it is the underlying assistant-vs-non-assistant axis. |
+| `contrarian` | critical | Gemma −0.286 (sig 3/3); residual fails Holm on Gemma | Drops because the **standalone residual** doesn't reach Holm significance on Gemma; the parent condition does pass. Drop is for narrative cleanliness, not because the parent fails. |
+| `scientist` | critical | Gemma −0.509, Qwen −0.984 (sig 3/3 both) | Tune-locked coef is +2000 on Gemma but −100 on Qwen — breaks the within-family sign symmetry. Both directions reduce, but the asymmetric coef is awkward to report. |
+| `facilitator` | **conformist** | **Gemma −0.727, Qwen −0.469 (both REDUCE)** | A conformist-family role that *reduces* sycophancy at its locked coef — directly contradicting the simple bidirectionality prediction for conformist roles. Neither effect reaches Holm significance per-seed on the 14-condition family. **This is the most consequential drop**; re-included in `data/{model}_clean.json["dropped_conditions_for_transparency"]` so readers can verify. |
+| `*_residual` | derived | various | Repo 3 is "main paper result only"; the residual decomposition is the centrepiece of the parent paper (`role-based-steering`) but does not appear in the clean-results headline. |
+| `*_caa_component` | derived | various | Same rationale as `*_residual`. |
+
+The dropped conditions are not omitted from the data files — they live
+in `data/{model}_clean.json["dropped_conditions_for_transparency"]`
+with full per-seed Δ provenance and per-condition exclusion reasons.
+They are simply absent from `main_table.{csv,md}` and from figures 1–8.
+
+**Bidirectionality framing.** The headline framing "critical reduce,
+conformist do not (or increase)" holds across the kept 6 + 1 conditions
+on Gemma but is weaker on Qwen and at the family level. After audit,
+the more accurate summary is:
+
+- Critical-family roles all reduce sycophancy at their tune-locked
+  coefficient on both models (3/3 critical-kept on Gemma sig; 3/3 on
+  Qwen, with a 2/3 nuance for contrarian-residual fail on Gemma).
+- Conformist-family roles are heterogeneous. On Gemma, 1/4
+  (collaborator) significantly *increases* syc, 1/4 (pacifist) increases
+  with weak significance, 1/4 (peacekeeper) is flat, and 1/4
+  (facilitator, dropped) actively *reduces*. On Qwen, all four
+  conformist roles either reduce sycophancy at their tune-locked
+  coefficient (peacekeeper, collaborator, facilitator) or are degraded
+  (pacifist locked at +500 saturates the model). The "conformist family
+  pushes toward sycophancy" prediction does not hold cleanly on either
+  model when all four roles are considered.
 
 ## Directory layout
 
@@ -120,10 +161,14 @@ sycophancy-clean-results/
     sycophantic label.
 - **Significance.** Paired one-sided Wilcoxon on base-level Δlogit
   (n=150 bases per seed). Each seed's Wilcoxon is Holm-corrected
-  across the source pipeline's 14-condition primary family. Kept
-  conditions are a subset of that family, so Holm significance carries
-  over directly. We report how many of the 3 test seeds crossed
-  α=0.05 after correction.
+  across the source pipeline's **14-condition primary family** (11
+  main + 3 standalone residuals; the 10 random controls are not in
+  the family). Kept conditions are a subset of that family, so Holm
+  significance carries over directly to the 7 kept role conditions.
+  We report how many of the 3 test seeds crossed α=0.05 after
+  correction. (`role-based-steering/paper/RESULTS.md` previously said
+  "Holm across all 24 conditions" — that was incorrect; both repos now
+  say 14.)
 - **Degradation handling.** At some large coefficients the steered
   forward pass collapses — binary rate locks to 0.5 and the syc-logit
   gap shrinks to zero — so a large |Δ| is a collapse artefact, not a
