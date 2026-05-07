@@ -304,6 +304,27 @@ reference.
    required by transformers 5.x); `pip install --upgrade jinja2` (3.1.0+
    required by `apply_chat_template`).
 
+6. **Baseline residual norms required a one-off extraction run** (added
+   for fig11 only). The layerwise experiment captured ‖ΔH‖ per condition
+   per layer but not ‖h^baseline‖, which is the denominator of
+   ε = |α| / ‖h̄^baseline_TARGET‖. A 5-min single-hook forward-pass
+   over the same 600 prompts on each model fills this gap; output is
+   `data/_baseline_norms_at_target_layer.json`. Code is `extract_baseline_norms.py`
+   (lives outside the repo, in /home/ubuntu/ on the run box; the docstring
+   references it). Per-token L2 norms are taken at TARGET_LAYER, mean over
+   tokens within each prompt, mean across all 600 prompts.
+
+7. **Gemma peacekeeper coefficient mismatch between source-repo files**.
+   `sycophancy-gemma/.../results/best_coefs_test.json` (top-level
+   aggregate) records peacekeeper at α=+5000, but each of the three test
+   seeds' own `best_coefs_test.json` records α=+2000. The layerwise
+   experiment loads the top-level aggregate and uses α=+5000; fig11
+   mirrors that choice for consistency. clean-results' main package
+   (`data/gemma-2-27b-it_clean.json`) uses α=+2000. The two readings
+   agree for the seven other Gemma cells. This divergence is in the
+   committed source data, not introduced by this analysis — flagged
+   here so a future reader doesn't reconcile by silently picking one.
+
 ---
 
 ## Where the science of this lives

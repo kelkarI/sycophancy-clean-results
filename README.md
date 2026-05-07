@@ -92,7 +92,10 @@ sycophancy-clean-results/
 │   ├── gemma-2-27b-it_cosines.json            6×7 cosine matrix (kept role vectors + CAA)
 │   ├── qwen3-32b_cosines.json                 same, Qwen
 │   ├── gemma-2-27b-it_perturbation_propagation.json   per-layer cosine + norm summary
-│   └── qwen3-32b_perturbation_propagation.json        same, Qwen
+│   ├── qwen3-32b_perturbation_propagation.json        same, Qwen
+│   ├── gemma-2-27b-it_normalized_effects.json         |∆logit|/ε per condition
+│   ├── qwen3-32b_normalized_effects.json              same, Qwen
+│   └── _baseline_norms_at_target_layer.json           ‖h̄_baseline_TARGET‖ (input to fig11)
 ├── scripts/
 │   ├── build_data.py                          rebuilds data/ from source repos
 │   ├── build_qualitative.py                   rebuilds qualitative/ from source repos
@@ -104,6 +107,9 @@ sycophancy-clean-results/
 │   ├── build_perturbation_propagation.py      aggregates per-layer summaries from source repos
 │   ├── make_perturbation_propagation_figs.py  builds fig9 + fig10
 │   ├── make_perturbation_propagation_table.py builds results/perturbation_propagation.{csv,md}
+│   ├── build_normalized_effects.py            joins ‖h̄‖ + ∆logit → data/{model}_normalized_effects.json
+│   ├── make_normalized_effects_figs.py        builds fig11 (|∆logit|/ε per condition)
+│   ├── make_normalized_effects_table.py       builds results/normalized_effects.{csv,md}
 │   └── _style.py                              shared matplotlib + palette + labels
 ├── figures/
 │   ├── fig1_delta_logit.{pdf,png}             Δ sycophancy logit, paired bar
@@ -128,7 +134,8 @@ sycophancy-clean-results/
 │   │                                          sweep only (same averaging and
 │   │                                          masking rules as fig7)
 │   ├── fig9_perturbation_cosine.{pdf,png}     per-layer mean cos(ΔH^CAA, ΔH^persona)
-│   └── fig10_perturbation_norm.{pdf,png}      per-layer mean ‖ΔH_ℓ‖, collapse check
+│   ├── fig10_perturbation_norm.{pdf,png}      per-layer mean ‖ΔH_ℓ‖, collapse check
+│   └── fig11_normalized_effects.{pdf,png}     |∆logit|/ε per condition, two-panel side-by-side
 ├── qualitative/
 │   ├── qual_check_caa.json                    Gemma free-form responses,
 │   │                                          5 philosophy prompts × {baseline, caa,
@@ -146,7 +153,9 @@ sycophancy-clean-results/
     ├── conformist_vs_critical.{csv,md}        family-level summary
     ├── conformist_vs_critical_filtered.{csv,md}  family means excluding degraded members
     ├── perturbation_propagation.csv          (model × persona) cosine + norm-decay table
-    └── perturbation_propagation.md           same, markdown
+    ├── perturbation_propagation.md           same, markdown
+    ├── normalized_effects.csv                (model × condition) |∆logit|/ε table
+    └── normalized_effects.md                 same, markdown
 ```
 
 ## Methods (summary)
@@ -349,6 +358,92 @@ python3 scripts/make_perturbation_propagation_figs.py
 python3 scripts/make_perturbation_propagation_table.py
 ```
 
+## Normalized effect sizes (fig11)
+
+A reviewer noted that the original paper's cross-model effect-size
+comparison uses hand-tuned coefficients (α=2000 on Gemma, α=200 on
+Qwen) without normalization to activation scale, and that the
+random-direction baseline produces substantial behavioral effects on
+Qwen (∆logit ≈ −1.06 in the n=10 random aggregate, ≈ −2.07 for the
+specific `random_0` vector at α=200), weakening the claim that
+persona vectors are uniquely meaningful directions on that model.
+
+fig11 normalizes effect sizes by the **perturbation energy**
+ε = |α| / ‖h̄^baseline_TARGET_LAYER‖. **Behavioral efficiency** =
+|∆logit| / ε measures sycophancy reduction per unit fractional
+activation perturbation; the random_0 row gives the geometric
+baseline ("what does an arbitrary direction at this α do per unit
+perturbation energy"), and `ratio_vs_random_0` divides each row by
+that baseline so a value > 1 means "exceeds random at matched ε".
+
+`results/normalized_effects.{csv,md}` —
+[**view on GitHub**](https://github.com/kelkarI/sycophancy-clean-results/blob/claude/design-implementation-spec-EWNnw/results/normalized_effects.md).
+
+**Empirical perturbation energies are not equal across models.**
+This is the first thing the normalization surfaces. The original
+hand-tuning *was* implicitly trying to equalize ε, but the
+empirical baseline residual norms are:
+
+  ‖h̄_Gemma_layer22‖ ≈ 19,750  (mean over 600 prompts × tokens)
+  ‖h̄_Qwen_layer32‖  ≈    408  (mean over 600 prompts × tokens)
+
+So at the locked α the actual fractional perturbations are
+ε_Gemma ≈ 0.10 (10% of baseline norm) and ε_Qwen ≈ 0.49 (49% of
+baseline norm). Qwen is being pushed ~5× harder than Gemma in
+fractional terms, even though the "tune-locked" α is 10× smaller.
+The cross-model asymmetry that fig9 surfaces (random_0 nearly
+matches persona cosines on Qwen but not on Gemma) is consistent
+with this: at ε ≈ 0.5 a random direction is large enough to
+dominate the residual stream's behaviour, so the
+"persona-vs-random" gap should be expected to be smaller on Qwen.
+
+**Persona-vs-random survives normalization on Gemma; doesn't on Qwen.**
+Reading `ratio_vs_random_0` from `results/normalized_effects.md`:
+
+  Gemma — every persona row exceeds random_0:
+    caa 11.7×, skeptic 9.4×, judge 7.4×, devils_advocate 6.9×,
+    facilitator 3.9×, peacekeeper 3.8×, collaborator 2.4×,
+    pacifist 1.3×, random_0 1.0×.
+  Qwen — only devils_advocate exceeds random_0, and barely:
+    devils_advocate 1.10×, caa 0.95×, skeptic 0.88×, judge 0.82×,
+    pacifist 0.58×, peacekeeper 0.34×, facilitator 0.23×,
+    collaborator 0.03×, random_0 1.0×.
+
+So the headline finding from this analysis is consistent with what
+fig9 already showed geometrically — the persona-specific signal is
+robust on Gemma, but on Qwen most persona effects are at or below
+what an arbitrary direction at the same α would do. This does not
+mean Qwen's persona steering is uninformative (it does reduce
+sycophancy in absolute terms, ∆logit ≈ −1.7 to −2.3 on critical
+roles), but it is not "uniquely meaningful in direction" relative
+to a random unit-Gaussian at the same coefficient on this model.
+
+**The peacekeeper coefficient on Gemma.** The aggregate file
+`sycophancy-gemma/.../results/best_coefs_test.json` (which the
+layerwise experiment loads) records peacekeeper at α=+5000, while
+each of the three test seeds' own `best_coefs_test.json` records
+α=+2000. fig11 mirrors the layerwise experiment and uses α=+5000
+on this cell; this is a divergence from `data/gemma-2-27b-it_clean.json`
+(which uses α=+2000 and reports ∆logit = −0.05, vs fig11's −0.71
+at α=+5000). The divergence is in the source data; fig11 picks the
+larger-α reading because it matches the layerwise experiment, not
+because it's the "right" calibration. See the deviation log in
+PERTURBATION_PROPAGATION.md.
+
+This is a curve-and-table report. Mechanistic interpretation
+belongs in the parent paper repo, not here.
+
+**Reproduction.**
+```bash
+# One-time GPU job to extract baseline residual norms (5 min on H100):
+python3 /path/to/extract_baseline_norms.py
+# (writes data/_baseline_norms_at_target_layer.json)
+
+python3 scripts/build_normalized_effects.py     # data/{model}_normalized_effects.json
+python3 scripts/make_normalized_effects_figs.py # figures/fig11
+python3 scripts/make_normalized_effects_table.py # results/normalized_effects.{csv,md}
+```
+
 ## Qualitative samples
 
 The A/B logit numbers are the primary signal, but stored decoded
@@ -392,6 +487,9 @@ python3 scripts/make_steering_curves.py  # rebuilds figures/fig6_steering_curves
 python3 scripts/build_perturbation_propagation.py    # rebuilds data/*_perturbation_propagation.json from source repos
 python3 scripts/make_perturbation_propagation_figs.py # rebuilds figures/fig9, fig10
 python3 scripts/make_perturbation_propagation_table.py # rebuilds results/perturbation_propagation.{csv,md}
+python3 scripts/build_normalized_effects.py          # rebuilds data/*_normalized_effects.json (needs data/_baseline_norms_at_target_layer.json from extract_baseline_norms.py)
+python3 scripts/make_normalized_effects_figs.py      # rebuilds figures/fig11
+python3 scripts/make_normalized_effects_table.py     # rebuilds results/normalized_effects.{csv,md}
 ```
 
 All three scripts are CPU-only and deterministic. `build_data.py`

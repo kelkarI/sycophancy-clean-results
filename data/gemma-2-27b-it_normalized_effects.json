@@ -1,0 +1,191 @@
+{
+  "model": "google/gemma-2-27b-it",
+  "target_layer": 22,
+  "h_baseline_norm_at_target_layer": 19750.196995442708,
+  "h_baseline_norm_sem": 15.413500789705294,
+  "n_prompts_for_norm": 600,
+  "random_control_alpha": 2000.0,
+  "test_seeds": [
+    "seed_42",
+    "seed_7",
+    "seed_123"
+  ],
+  "n_test_seeds": 3,
+  "conditions": {
+    "caa": {
+      "alpha": -2000.0,
+      "perturbation_energy": 0.10126481272371579,
+      "delta_logit_mean": -0.8794618050257366,
+      "delta_logit_std": 0.0005991564529842732,
+      "delta_logit_ci95_lo": -0.8801398143789942,
+      "delta_logit_ci95_hi": -0.8787837956724789,
+      "delta_logit_per_seed": [
+        -0.8800520944595337,
+        -0.8794791618982952,
+        -0.8788541587193808
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 8.68477194961296,
+      "argmax_cosine_with_caa": 1.0,
+      "argmax_layer": 22,
+      "inj_cos": 1.0,
+      "final_cos": 1.0
+    },
+    "skeptic": {
+      "alpha": 2000.0,
+      "perturbation_energy": 0.10126481272371579,
+      "delta_logit_mean": -0.7108159750699997,
+      "delta_logit_std": 0.013352070294416282,
+      "delta_logit_ci95_lo": -0.725925264972291,
+      "delta_logit_ci95_hi": -0.6957066851677084,
+      "delta_logit_per_seed": [
+        -0.7178645944595337,
+        -0.6954166704416276,
+        -0.7191666603088379
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 7.019377767570093,
+      "argmax_cosine_with_caa": 0.3366489112377167,
+      "argmax_layer": 44,
+      "inj_cos": -0.06443561613559723,
+      "final_cos": 0.2997881770133972
+    },
+    "devils_advocate": {
+      "alpha": 2000.0,
+      "perturbation_energy": 0.10126481272371579,
+      "delta_logit_mean": -0.5206770708825854,
+      "delta_logit_std": 0.0159895924727124,
+      "delta_logit_ci95_lo": -0.5387709980985571,
+      "delta_logit_ci95_hi": -0.5025831436666137,
+      "delta_logit_per_seed": [
+        -0.5206770737965902,
+        -0.5046874769528708,
+        -0.5366666618982951
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 5.141737360470573,
+      "argmax_cosine_with_caa": 0.362331360578537,
+      "argmax_layer": 44,
+      "inj_cos": 0.002755465218797326,
+      "final_cos": 0.33130505681037903
+    },
+    "judge": {
+      "alpha": 2000.0,
+      "perturbation_energy": 0.10126481272371579,
+      "delta_logit_mean": -0.5564236285951403,
+      "delta_logit_std": 0.003112953752600568,
+      "delta_logit_ci95_lo": -0.5599462673817364,
+      "delta_logit_ci95_hi": -0.5529009898085442,
+      "delta_logit_per_seed": [
+        -0.5529687833786011,
+        -0.5572916825612387,
+        -0.5590104198455811
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 5.494738138836534,
+      "argmax_cosine_with_caa": 0.24446304142475128,
+      "argmax_layer": 44,
+      "inj_cos": -0.08158894628286362,
+      "final_cos": 0.19394458830356598
+    },
+    "peacekeeper": {
+      "alpha": 5000.0,
+      "perturbation_energy": 0.2531620318092895,
+      "delta_logit_mean": -0.7137326528711452,
+      "delta_logit_std": 0.013097741871756125,
+      "delta_logit_ci95_lo": -0.7285541430701971,
+      "delta_logit_ci95_hi": -0.6989111626720933,
+      "delta_logit_per_seed": [
+        -0.7257812881469727,
+        -0.6997916671757898,
+        -0.715625003290673
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 2.8192720992570086,
+      "argmax_cosine_with_caa": 0.27414971590042114,
+      "argmax_layer": 44,
+      "inj_cos": -0.06376633048057556,
+      "final_cos": 0.23613347113132477
+    },
+    "pacifist": {
+      "alpha": 2000.0,
+      "perturbation_energy": 0.10126481272371579,
+      "delta_logit_mean": 0.09993054495089582,
+      "delta_logit_std": 0.0013842077814100481,
+      "delta_logit_ci95_lo": 0.09836416638988134,
+      "delta_logit_ci95_hi": 0.1014969235119103,
+      "delta_logit_per_seed": [
+        0.10124998728434242,
+        0.09848958430190868,
+        0.10005206326643634
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 0.9868239743210675,
+      "argmax_cosine_with_caa": 0.24537719786167145,
+      "argmax_layer": 44,
+      "inj_cos": -0.07160354405641556,
+      "final_cos": 0.18388761579990387
+    },
+    "collaborator": {
+      "alpha": 500.0,
+      "perturbation_energy": 0.025316203180928948,
+      "delta_logit_mean": 0.045104169183307175,
+      "delta_logit_std": 0.0058409939377302,
+      "delta_logit_ci95_lo": 0.03849446231563151,
+      "delta_logit_ci95_hi": 0.05171387605098284,
+      "delta_logit_per_seed": [
+        0.0475520960489908,
+        0.03843750874201457,
+        0.049322902758916154
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 1.7816324533721857,
+      "argmax_cosine_with_caa": -0.16507665812969208,
+      "argmax_layer": 22,
+      "inj_cos": -0.16507665812969208,
+      "final_cos": 0.12143772095441818
+    },
+    "facilitator": {
+      "alpha": -5000.0,
+      "perturbation_energy": 0.2531620318092895,
+      "delta_logit_mean": -0.7269965272479587,
+      "delta_logit_std": 0.00798698586821076,
+      "delta_logit_ci95_lo": -0.7360346525923681,
+      "delta_logit_ci95_hi": -0.7179584019035493,
+      "delta_logit_per_seed": [
+        -0.735989572207133,
+        -0.7242708237965902,
+        -0.720729185740153
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 2.8716649256299833,
+      "argmax_cosine_with_caa": 0.28448086977005005,
+      "argmax_layer": 38,
+      "inj_cos": 0.1461510956287384,
+      "final_cos": 0.17904119193553925
+    },
+    "random_0": {
+      "alpha": 2000.0,
+      "perturbation_energy": 0.10126481272371579,
+      "delta_logit_mean": -0.07550347619586524,
+      "delta_logit_std": 0.008129735738124306,
+      "delta_logit_ci95_lo": -0.08470313822488455,
+      "delta_logit_ci95_hi": -0.06630381416684593,
+      "delta_logit_per_seed": [
+        -0.08401041348775229,
+        -0.06781247695287074,
+        -0.07468753814697271
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 0.7456042643545288,
+      "argmax_cosine_with_caa": 0.13508504629135132,
+      "argmax_layer": 44,
+      "inj_cos": -0.006295560393482447,
+      "final_cos": 0.12544097006320953
+    }
+  },
+  "source_repo": "/home/ubuntu/sycophancy-gemma",
+  "source_branch": "claude/design-implementation-spec-EWNnw",
+  "source_commit": "b749a3ea584e916801c0cad316d6bf0f556d7a8b",
+  "layerwise_data_source": "data/gemma-2-27b-it_perturbation_propagation.json"
+}

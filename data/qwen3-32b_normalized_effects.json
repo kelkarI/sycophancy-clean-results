@@ -1,0 +1,191 @@
+{
+  "model": "Qwen/Qwen3-32B",
+  "target_layer": 32,
+  "h_baseline_norm_at_target_layer": 408.3039997355143,
+  "h_baseline_norm_sem": 0.6404908000634453,
+  "n_prompts_for_norm": 600,
+  "random_control_alpha": 200.0,
+  "test_seeds": [
+    "seed_42",
+    "seed_7",
+    "seed_123"
+  ],
+  "n_test_seeds": 3,
+  "conditions": {
+    "caa": {
+      "alpha": -200.0,
+      "perturbation_energy": 0.48983110655186657,
+      "delta_logit_mean": -1.9650694509678415,
+      "delta_logit_std": 0.12618266847086596,
+      "delta_logit_ci95_lo": -2.107858582280932,
+      "delta_logit_ci95_hi": -1.8222803196547508,
+      "delta_logit_per_seed": [
+        -1.8270833285649615,
+        -2.0745833505193394,
+        -1.9935416738192238
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 4.0117285829412035,
+      "argmax_cosine_with_caa": 1.0,
+      "argmax_layer": 32,
+      "inj_cos": 1.0,
+      "final_cos": 1.0
+    },
+    "skeptic": {
+      "alpha": 200.0,
+      "perturbation_energy": 0.48983110655186657,
+      "delta_logit_mean": -1.823124987946616,
+      "delta_logit_std": 0.058169051441661006,
+      "delta_logit_ci95_lo": -1.8889494662629784,
+      "delta_logit_ci95_hi": -1.7573005096302536,
+      "delta_logit_per_seed": [
+        -1.799583311875661,
+        -1.8893750023841858,
+        -1.7804166495800016
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 3.721946122981823,
+      "argmax_cosine_with_caa": 0.3586561679840088,
+      "argmax_layer": 49,
+      "inj_cos": 0.10358279943466187,
+      "final_cos": 0.2645737826824188
+    },
+    "devils_advocate": {
+      "alpha": 200.0,
+      "perturbation_energy": 0.48983110655186657,
+      "delta_logit_mean": -2.272083326180776,
+      "delta_logit_std": 0.1954485466716409,
+      "delta_logit_ci95_lo": -2.493254177406618,
+      "delta_logit_ci95_hi": -2.050912474954934,
+      "delta_logit_per_seed": [
+        -2.1085416400432586,
+        -2.488541667064031,
+        -2.219166671435038
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 4.63850354905991,
+      "argmax_cosine_with_caa": 0.4015147089958191,
+      "argmax_layer": 49,
+      "inj_cos": 0.10746254026889801,
+      "final_cos": 0.25514456629753113
+    },
+    "judge": {
+      "alpha": 200.0,
+      "perturbation_energy": 0.48983110655186657,
+      "delta_logit_mean": -1.698888888756434,
+      "delta_logit_std": 0.07502673557508553,
+      "delta_logit_ci95_lo": -1.7837896324785951,
+      "delta_logit_ci95_hi": -1.6139881450342728,
+      "delta_logit_per_seed": [
+        -1.6147916408379872,
+        -1.7589583539962768,
+        -1.7229166714350381
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 3.4683156419273757,
+      "argmax_cosine_with_caa": 0.26140686869621277,
+      "argmax_layer": 47,
+      "inj_cos": 0.04081239551305771,
+      "final_cos": 0.2077724188566208
+    },
+    "peacekeeper": {
+      "alpha": -200.0,
+      "perturbation_energy": 0.48983110655186657,
+      "delta_logit_mean": -0.709097213745117,
+      "delta_logit_std": 0.10851393993012201,
+      "delta_logit_ci95_lo": -0.8318922965069033,
+      "delta_logit_ci95_hi": -0.5863021309833307,
+      "delta_logit_per_seed": [
+        -0.5854166563351946,
+        -0.7535416611035664,
+        -0.7883333237965902
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 1.4476361428672009,
+      "argmax_cosine_with_caa": 0.3562421500682831,
+      "argmax_layer": 46,
+      "inj_cos": -0.01551138423383236,
+      "final_cos": 0.29757341742515564
+    },
+    "pacifist": {
+      "alpha": 500.0,
+      "perturbation_energy": 1.2245777663796664,
+      "delta_logit_mean": -2.978593748410543,
+      "delta_logit_std": 0.17358209249517997,
+      "delta_logit_ci95_lo": -3.1750203773545804,
+      "delta_logit_ci95_hi": -2.7821671194665054,
+      "delta_logit_per_seed": [
+        -2.7960937372843424,
+        -3.141614585717519,
+        -2.998072922229767
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 2.432343482126446,
+      "argmax_cosine_with_caa": 0.1911151260137558,
+      "argmax_layer": 51,
+      "inj_cos": -0.03276902064681053,
+      "final_cos": 0.1352708637714386
+    },
+    "collaborator": {
+      "alpha": -100.0,
+      "perturbation_energy": 0.24491555327593328,
+      "delta_logit_mean": -0.02937499708599504,
+      "delta_logit_std": 0.01637110596730067,
+      "delta_logit_ci95_lo": -0.04790064746281479,
+      "delta_logit_ci95_hi": -0.010849346709175294,
+      "delta_logit_per_seed": [
+        -0.01062496662139889,
+        -0.03666665474573749,
+        -0.040833369890848736
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 0.11993928802430852,
+      "argmax_cosine_with_caa": 0.1860760748386383,
+      "argmax_layer": 46,
+      "inj_cos": -0.020395120605826378,
+      "final_cos": 0.17668567597866058
+    },
+    "facilitator": {
+      "alpha": -200.0,
+      "perturbation_energy": 0.48983110655186657,
+      "delta_logit_mean": -0.46861110945542644,
+      "delta_logit_std": 0.09876192083894036,
+      "delta_logit_ci95_lo": -0.580370743756238,
+      "delta_logit_ci95_hi": -0.35685147515461485,
+      "delta_logit_per_seed": [
+        -0.5716666487852731,
+        -0.4593749922513961,
+        -0.3747916873296102
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 0.9566789515557375,
+      "argmax_cosine_with_caa": 0.3346806466579437,
+      "argmax_layer": 46,
+      "inj_cos": -0.053967639803886414,
+      "final_cos": 0.28244972229003906
+    },
+    "random_0": {
+      "alpha": 200.0,
+      "perturbation_energy": 0.48983110655186657,
+      "delta_logit_mean": -2.0679861117733846,
+      "delta_logit_std": 0.052776384029809414,
+      "delta_logit_ci95_lo": -2.127708212445257,
+      "delta_logit_ci95_hi": -2.008264011101512,
+      "delta_logit_per_seed": [
+        -2.0087499745686848,
+        -2.110000016291936,
+        -2.0852083444595335
+      ],
+      "n_seeds": 3,
+      "behavioral_efficiency": 4.221835004172837,
+      "argmax_cosine_with_caa": 0.34346622228622437,
+      "argmax_layer": 47,
+      "inj_cos": -0.006569629069417715,
+      "final_cos": 0.28831472992897034
+    }
+  },
+  "source_repo": "/home/ubuntu/sycophancy-qwen",
+  "source_branch": "claude/design-implementation-spec-EWNnw",
+  "source_commit": "498cc25b28bfd15b1616d0dd37c04f28a5076aaa",
+  "layerwise_data_source": "data/qwen3-32b_perturbation_propagation.json"
+}
