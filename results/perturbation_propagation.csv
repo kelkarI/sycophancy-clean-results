@@ -1,0 +1,7 @@
+model,persona,n_prompts,inject_layer,inject_cos_observed,inject_cos_expected,inject_cos_abs_err,midpoint_layer,midpoint_cos_mean,midpoint_cos_ci_lo,midpoint_cos_ci_hi,final_layer,final_cos_mean,final_cos_ci_lo,final_cos_ci_hi,argmax_layer,argmax_cos_mean,norm_persona_inject,norm_persona_final,norm_persona_decay,norm_caa_inject,norm_caa_final,norm_caa_decay
+gemma-2-27b-it,skeptic,600,22,-0.0644,-0.064,0.0004,33,0.1928,0.1907,0.1949,45,0.2998,0.2973,0.3023,44,0.3366,2000.41,9443.74,4.721,1995.58,5684.55,2.849
+gemma-2-27b-it,devils_advocate,600,22,0.0028,-0.003,0.0058,33,0.2265,0.2244,0.2285,45,0.3313,0.3286,0.334,44,0.3623,1998.58,9737.68,4.872,1995.58,5684.55,2.849
+gemma-2-27b-it,judge,600,22,-0.0816,-0.0854,0.0038,33,0.1755,0.1729,0.178,45,0.1939,0.1912,0.1967,44,0.2445,2004.27,10032.47,5.006,1995.58,5684.55,2.849
+qwen3-32b,skeptic,600,32,0.1036,0.1049,0.0013,47,0.3552,0.3537,0.3566,63,0.2646,0.26,0.2692,49,0.3587,200.12,1306.73,6.53,200.0,1109.91,5.55
+qwen3-32b,devils_advocate,600,32,0.1075,0.1078,0.0003,47,0.3988,0.3976,0.4,63,0.2551,0.2513,0.2589,49,0.4015,200.01,1315.05,6.575,200.0,1109.91,5.55
+qwen3-32b,judge,600,32,0.0408,0.0423,0.0015,47,0.2614,0.2597,0.2631,63,0.2078,0.2049,0.2107,47,0.2614,199.88,1424.26,7.126,200.0,1109.91,5.55

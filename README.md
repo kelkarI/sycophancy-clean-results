@@ -23,6 +23,10 @@ Source repositories (read only, not modified):
   (same structure; target layer 32, coefficient grid rescaled 10×
   because of Qwen's smaller activation norms — see the parent paper
   repo for details).
+- **General experiment code (public mirror)**:
+  <https://github.com/vkmk1/Sycophancy-Steering>
+  (the same Gemma pipeline that powers `../sycophancy-gemma/`,
+  published under the project's primary GitHub home).
 
 ## Scope
 
@@ -86,7 +90,9 @@ sycophancy-clean-results/
 │   ├── gemma-2-27b-it_clean.json              per-seed + aggregate for kept conds
 │   ├── qwen3-32b_clean.json                   same, Qwen
 │   ├── gemma-2-27b-it_cosines.json            6×7 cosine matrix (kept role vectors + CAA)
-│   └── qwen3-32b_cosines.json                 same, Qwen
+│   ├── qwen3-32b_cosines.json                 same, Qwen
+│   ├── gemma-2-27b-it_perturbation_propagation.json   per-layer cosine + norm summary
+│   └── qwen3-32b_perturbation_propagation.json        same, Qwen
 ├── scripts/
 │   ├── build_data.py                          rebuilds data/ from source repos
 │   ├── build_qualitative.py                   rebuilds qualitative/ from source repos
@@ -95,6 +101,9 @@ sycophancy-clean-results/
 │   ├── make_steering_curves.py                rebuilds fig6 coefficient sweep
 │                                              (reads rates files from source repos)
 │   ├── make_tables.py                         rebuilds results/*.csv and *.md
+│   ├── build_perturbation_propagation.py      aggregates per-layer summaries from source repos
+│   ├── make_perturbation_propagation_figs.py  builds fig9 + fig10
+│   ├── make_perturbation_propagation_table.py builds results/perturbation_propagation.{csv,md}
 │   └── _style.py                              shared matplotlib + palette + labels
 ├── figures/
 │   ├── fig1_delta_logit.{pdf,png}             Δ sycophancy logit, paired bar
@@ -114,10 +123,12 @@ sycophancy-clean-results/
 │   │                                          mean) with min/max bands; degraded
 │   │                                          cells masked before averaging — see
 │   │                                          "Family averaging (fig7)" below
-│   └── fig8_steering_curves_family_pos.{pdf,png}  fig7 restricted to coef >= 0,
-│                                              i.e. the positive half of the
-│                                              sweep only (same averaging and
-│                                              masking rules as fig7)
+│   ├── fig8_steering_curves_family_pos.{pdf,png}  fig7 restricted to coef >= 0,
+│   │                                          i.e. the positive half of the
+│   │                                          sweep only (same averaging and
+│   │                                          masking rules as fig7)
+│   ├── fig9_perturbation_cosine.{pdf,png}     per-layer mean cos(ΔH^CAA, ΔH^persona)
+│   └── fig10_perturbation_norm.{pdf,png}      per-layer mean ‖ΔH_ℓ‖, collapse check
 ├── qualitative/
 │   ├── qual_check_caa.json                    Gemma free-form responses,
 │   │                                          5 philosophy prompts × {baseline, caa,
@@ -133,7 +144,9 @@ sycophancy-clean-results/
     ├── main_table.{csv,md}                    condition × model table (degraded rows flagged †)
     ├── main_table_filtered.{csv,md}           same, degraded rows removed
     ├── conformist_vs_critical.{csv,md}        family-level summary
-    └── conformist_vs_critical_filtered.{csv,md}  family means excluding degraded members
+    ├── conformist_vs_critical_filtered.{csv,md}  family means excluding degraded members
+    ├── perturbation_propagation.csv          (model × persona) cosine + norm-decay table
+    └── perturbation_propagation.md           same, markdown
 ```
 
 ## Methods (summary)
@@ -248,6 +261,58 @@ and min/max) and `_plot_family` (rendering).
   −100) and only pacifist pushes sycophancy up at +coef. fig7 shows
   the full picture on both sides.
 
+## Perturbation propagation (fig9–10)
+
+A reviewer raised the concern that geometric near-orthogonality
+of the persona and CAA steering *vectors* at the injection
+layer (paper §4.3, all |cos| < 0.17 on Gemma; |cos| ≤ 0.108 on
+Qwen) does **not** by itself imply mechanistic independence —
+24+ nonlinear blocks downstream can collapse orthogonal inputs
+onto shared pathways. fig9 addresses this directly: for each
+prompt in the held-out test set, we capture the post-block
+residual at every layer ℓ ≥ TARGET_LAYER under baseline,
+CAA-steered, and three persona-steered (skeptic,
+devils_advocate, judge) forward passes, take ΔH = H_steer −
+H_base, and plot the per-layer mean cosine between ΔH^CAA and
+ΔH^persona, averaged within prompt over tokens then across
+prompts. fig10 plots ‖ΔH_ℓ‖ per layer per condition as a
+magnitude check — high cosine is uninformative if both
+perturbations have decayed to ~0.
+
+**Sanity check.** At the injection layer ℓ = TARGET_LAYER,
+ΔH^CAA is by construction equal to α_CAA · v_CAA (broadcast
+across tokens), so the per-token cosine reduces analytically
+to sign(α_CAA · α_persona) · cos(v_CAA, v_persona) — the §4.3
+vector cosine, with sign flipped because the locked CAA
+coefficient is negative while persona coefficients are
+positive. The driver halts on a >0.005 absolute mismatch with
+the paper-reported number on either model. The two source-repo
+runs pass this check on all 6 (model, persona) cells; per-cell
+`observed`, `expected`, and `abs_err` values are stored in
+`data/{model}_perturbation_propagation.json["injection_layer_sanity_check"]`
+and reproduced in `results/perturbation_propagation.md`.
+
+**What fig9 / fig10 / the table show.** See
+`results/perturbation_propagation.md` for the per-cell numbers
+(injection / midpoint / final-layer cosines, plus the
+`‖ΔH_final‖ / ‖ΔH_inject‖` decay ratio per persona — a
+condition with decay ratio << 1 means the cosine reading at
+the final layer is being computed on small vectors and should
+be read with that caveat). fig9 shows the trajectory; fig10
+shows that the perturbations do not collapse to zero at any
+layer.
+
+This is a curve-and-sanity-check report. Mechanistic
+conclusions belong in the parent paper repo
+(`../role-based-steering/paper/`), not here.
+
+**Reproduction.**
+```bash
+python3 scripts/build_perturbation_propagation.py
+python3 scripts/make_perturbation_propagation_figs.py
+python3 scripts/make_perturbation_propagation_table.py
+```
+
 ## Qualitative samples
 
 The A/B logit numbers are the primary signal, but stored decoded
@@ -288,6 +353,9 @@ python3 scripts/make_showcase_pdf.py  # rebuilds figures/fig5_tone_comparison.pd
 python3 scripts/make_tables.py      # rebuilds results/
 python3 scripts/make_figures.py     # rebuilds figures/ (fig1-4)
 python3 scripts/make_steering_curves.py  # rebuilds figures/fig6_steering_curves
+python3 scripts/build_perturbation_propagation.py    # rebuilds data/*_perturbation_propagation.json from source repos
+python3 scripts/make_perturbation_propagation_figs.py # rebuilds figures/fig9, fig10
+python3 scripts/make_perturbation_propagation_table.py # rebuilds results/perturbation_propagation.{csv,md}
 ```
 
 All three scripts are CPU-only and deterministic. `build_data.py`
