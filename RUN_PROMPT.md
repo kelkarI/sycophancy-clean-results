@@ -296,13 +296,25 @@ Recovery steps R1 → R3 (canonical Qwen sequence; total ~35 min,
       10 `random_{i}_unit.pt` controls.
 
       Pre-condition: `data/sycophancy/{sycophancy_on_nlp_survey,
-      sycophancy_on_political_typology_quiz}.jsonl` must exist. If
-      missing, run `python 00b_rebuild_eval.py` first (it
-      downloads the sycophancy training pairs from anthropics/evals
-      via the Qwen `00b_rebuild_eval.py` script — wait, that one
-      builds the eval set, not the training set; if the training
-      JSONLs are missing, follow the Qwen README's data-fetch
-      block, NOT a recovery I will spell out here).
+      sycophancy_on_political_typology_quiz}.jsonl` must exist
+      (these are the CAA training pairs; gitignored on this repo
+      per `.gitignore` line `data/sycophancy/`). If missing:
+
+        python fetch_external.py --skip-vectors
+
+      `fetch_external.py`'s dataset-fetch half is repo-agnostic
+      (it pulls anthropics/evals JSONLs at pinned blob SHAs
+      `5525210...`, `480ff82...`, `52f57e3...` per
+      `fetch_external.py:43-47`). `--skip-vectors` skips the
+      vector-fetch half, which is a stale Gemma fork in this repo
+      that would try to write to `vectors/gemma-2-27b/` (wrong
+      target on Qwen — that step is replaced by R3 below).
+
+      Verify before continuing R2:
+
+        wc -l data/sycophancy/sycophancy_on_nlp_survey.jsonl \
+              data/sycophancy/sycophancy_on_political_typology_quiz.jsonl
+        # both files non-empty
 
   R3  Build the persona + assistant-axis unit vectors from the
       cached release, plus the CAA decomposition. CPU-only, ~5 min:
