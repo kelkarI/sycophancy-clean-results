@@ -225,6 +225,122 @@ OR force single-GPU placement:
 Phase 2's G2.0 precheck visualises the actual GPU layout at runtime.
 
 ════════════════════════════════════════════════════════════════════════
+QWEN VECTOR REGENERATION (recovery path for T0.4 / T5.1)
+════════════════════════════════════════════════════════════════════════
+
+`sycophancy-qwen/vectors/steering/` is gitignored at the repo level
+(.gitignore line: `vectors/steering/`) because the upstream
+`lu-christina/assistant-axis-vectors` release and the locally-extracted
+Qwen 3 32B CAA are not the project's to redistribute. On Gemma the
+same vectors ARE committed, so this recovery is Qwen-specific. If T0.4
+or T5.1 finds Qwen vectors missing, run the THREE steps below — they
+exactly mirror the canonical sequence documented in
+`sycophancy-qwen/README.md` ("python extract_all_vectors.py
+--skip-personas; python build_vectors_from_official.py") plus an
+explicit cache-population step that the original README assumes the
+human did via `huggingface-cli login` + first model load.
+
+Pre-conditions (one-time per Lambda instance):
+
+  - `huggingface-cli login` — needs an HF token with access to
+    Qwen/Qwen3-32B. The model is gated; you must also accept the
+    license at <https://huggingface.co/Qwen/Qwen3-32B> first.
+  - `HOME == /home/ubuntu` — the documented Lambda layout. The
+    `SRC` constant at `build_vectors_from_official.py:39-41` hardcodes
+    `/home/ubuntu/.cache/huggingface/hub/...`. If your `HOME` is
+    different, either symlink `/home/ubuntu/.cache` to your real
+    cache, or edit `SRC` at the top of the script to match your
+    actual cache path. Both options are reversible; do NOT change
+    any other line of `build_vectors_from_official.py`.
+
+Recovery steps R1 → R3 (canonical Qwen sequence; total ~35 min,
+~$1.50 GPU on H100):
+
+  R1  Populate the HF cache with the qwen-3-32b/ subdir of the
+      assistant-axis-vectors dataset, pinned to the EXACT revision
+      SHA that `build_vectors_from_official.py:39-41` expects:
+
+        python -c "
+        from huggingface_hub import snapshot_download
+        snapshot_download(
+            repo_id='lu-christina/assistant-axis-vectors',
+            repo_type='dataset',
+            revision='3b3b788432ad33e3a28d9ff08e88a530c0740814',
+            allow_patterns=['qwen-3-32b/**'],
+        )
+        "
+
+      Verify the path the script will read from:
+
+        ls /home/ubuntu/.cache/huggingface/hub/datasets--lu-christina--assistant-axis-vectors/snapshots/3b3b788432ad33e3a28d9ff08e88a530c0740814/qwen-3-32b/
+
+      Should list `assistant_axis.pt`, `default_vector.pt`, and
+      `role_vectors/{role}.pt` for each of the 9 role names in
+      `config.ROLE_NAMES`. Pinning the revision SHA is what
+      guarantees byte-equality with the originally-shipped vectors.
+
+  R2  Extract CAA on Qwen 3 32B locally (Rimsky et al. 2024
+      contrastive activation difference at TARGET_LAYER=32). GPU,
+      ~30 min on H100:
+
+        cd sycophancy-qwen/scripts
+        python extract_all_vectors.py --skip-personas
+
+      `--skip-personas` runs only the CAA leg (the persona leg will
+      be done by R3 from the cached release, not from scratch). The
+      CAA leg loads `Qwen/Qwen3-32B` in bf16, runs 2000 paired
+      forward passes (1000 sycophantic-suffix + 1000 honest-suffix
+      on `sycophancy_on_nlp_survey.jsonl` +
+      `sycophancy_on_political_typology_quiz.jsonl`), and writes
+      `vectors/steering/caa_unit.pt` plus `caa_metadata.json` plus
+      10 `random_{i}_unit.pt` controls.
+
+      Pre-condition: `data/sycophancy/{sycophancy_on_nlp_survey,
+      sycophancy_on_political_typology_quiz}.jsonl` must exist. If
+      missing, run `python 00b_rebuild_eval.py` first (it
+      downloads the sycophancy training pairs from anthropics/evals
+      via the Qwen `00b_rebuild_eval.py` script — wait, that one
+      builds the eval set, not the training set; if the training
+      JSONLs are missing, follow the Qwen README's data-fetch
+      block, NOT a recovery I will spell out here).
+
+  R3  Build the persona + assistant-axis unit vectors from the
+      cached release, plus the CAA decomposition. CPU-only, ~5 min:
+
+        python build_vectors_from_official.py
+
+      This is the canonical Qwen vector-prep script. Do NOT use
+      `01_prepare_steering_vectors.py` — that file is a stale
+      Gemma fork in this repo (hardcodes `vectors/gemma-2-27b/...`
+      paths). `build_vectors_from_official.py` reads from
+      `SRC` (the cache path from R1), takes
+      `role_vector[L] - default_vector[L]` at L=32, unit-normalises,
+      and saves `vectors/steering/{role}_unit.pt` plus
+      `assistant_axis_unit.pt`. With `caa_unit.pt` already produced
+      by R2, it ALSO writes the decomposition files
+      (`{name}_caa_component_unit.pt`, `{name}_residual_unit.pt`)
+      and `caa_decomposition.json`.
+
+After R1+R2+R3 the five files needed by the new experiment exist:
+
+    vectors/steering/{caa, skeptic, devils_advocate, judge,
+                      random_0}_unit.pt
+
+Re-run T0.4 / T5.1 to confirm. If T0.5 (Qwen §4.3 cosine numbers)
+still fails after a fresh R3, the regenerated decomposition has
+drifted from the originally-shipped numbers — STOP and report; that
+is a real change worth surfacing rather than papering over.
+
+This recovery is faithful to the original Qwen pipeline. Order is
+fixed: R2 (CAA extraction) before R3 (persona build) so that R3 can
+write the decomposition files in the same pass. Reversed order works
+for the five required `*_unit.pt` files but skips the decomposition
+write — the original README puts CAA first.
+
+Budget impact: adds ~35 min wall-clock and ~$1.50 GPU to the Qwen run,
+once per Lambda instance. The resulting files persist across runs.
+
+════════════════════════════════════════════════════════════════════════
 PHASE 0 — Pre-implementation reconnaissance and verification
 ════════════════════════════════════════════════════════════════════════
 
@@ -265,9 +381,6 @@ and confirm it passes before continuing.
             print('Qwen coefs OK')"
 
   T0.4  Vector files exist with the expected shape and unit norm.
-        (If Qwen vectors are missing — gitignored in that repo — STOP
-        and ask the human to populate vectors/steering/. Do not run
-        build_vectors_from_official.py yourself unless authorised.)
 
           for repo in sycophancy-gemma/experiment-main sycophancy-qwen; do
             python - <<EOF
@@ -280,6 +393,19 @@ and confirm it passes before continuing.
           print("$repo vectors OK")
           EOF
           done
+
+        Failure handling differs by repo:
+
+          - If the GEMMA branch fails: STOP. Gemma vectors are
+            committed to the repo; missing files mean real
+            corruption, not a recoverable state.
+          - If the QWEN branch fails: vectors/steering/ is
+            gitignored on Qwen by design. Run the three-step
+            recovery in the "QWEN VECTOR REGENERATION" section
+            above (R1 → R2 → R3), then re-run T0.4. Do this BEFORE
+            proceeding to Phase 1 — there is no point implementing
+            and unit-testing the driver if the Qwen run will halt
+            at Phase 5 for missing vectors.
 
   T0.5  The §4.3 cosine numbers are still in caa_decomposition.json
         (Gemma) and vector_cosine_similarities.json (Qwen). These are
@@ -603,7 +729,12 @@ PHASE 5 — Mirror to Qwen
 
 Pre-flight:
 
-  T5.1  Vectors present (T0.4 already covered this; re-confirm):
+  T5.1  Vectors present (T0.4 already covered this; re-confirm).
+        If this fails because vectors/steering/ on Qwen is empty
+        (e.g. a fresh Lambda instance, or the recovery from Phase 0
+        was skipped), you have skipped the QWEN VECTOR REGENERATION
+        recovery from Phase 0. Run R1 → R2 → R3 now, then re-confirm.
+
           python - <<EOF
           import torch
           for n in ['caa','skeptic','devils_advocate','judge','random_0']:
@@ -1033,6 +1164,8 @@ Test inventory (recap)
 If you finished the experiment, you have run all of these:
 
   Phase 0: T0.1 .. T0.7   (pre-flight verification)
+           R1 .. R3        (Qwen vector regeneration; only if T0.4
+                            finds vectors/steering/ empty on Qwen)
   Phase 1: U1 .. U8       (CPU unit tests on the driver; U7 mandatory)
   Phase 2: G2.0 .. G2.5   (hardware precheck + 1-prompt smoke + sanity
                            battery + chat-template behaviour, Gemma)
