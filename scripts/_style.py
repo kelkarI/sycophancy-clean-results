@@ -34,6 +34,10 @@ PALETTE = {
     "peacekeeper":   "#d94801",
     "pacifist":      "#f16913",
     "collaborator":  "#fd8d3c",
+    # facilitator is dropped from fig1-fig8 per the "Scope" section in the
+    # README, but kept in fig9-fig10 (perturbation propagation) where the
+    # complete set of conformist roles is the right unit of analysis.
+    "facilitator":   "#fdae6b",
     "random":        "#bdbdbd",
 }
 
@@ -45,6 +49,7 @@ LABELS = {
     "peacekeeper":    "Peacekeeper",
     "pacifist":       "Pacifist",
     "collaborator":   "Collaborator",
+    "facilitator":    "Facilitator",
     "random":         "Random (n=10)",
 }
 

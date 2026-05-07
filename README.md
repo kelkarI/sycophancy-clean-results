@@ -270,27 +270,62 @@ Qwen) does **not** by itself imply mechanistic independence —
 24+ nonlinear blocks downstream can collapse orthogonal inputs
 onto shared pathways. fig9 addresses this directly: for each
 prompt in the held-out test set, we capture the post-block
-residual at every layer ℓ ≥ TARGET_LAYER under baseline,
-CAA-steered, and three persona-steered (skeptic,
-devils_advocate, judge) forward passes, take ΔH = H_steer −
-H_base, and plot the per-layer mean cosine between ΔH^CAA and
-ΔH^persona, averaged within prompt over tokens then across
-prompts. fig10 plots ‖ΔH_ℓ‖ per layer per condition as a
-magnitude check — high cosine is uninformative if both
-perturbations have decayed to ~0.
+residual at every layer ℓ ≥ TARGET_LAYER under nine forward
+passes per prompt — baseline, CAA-steered, three
+critical-persona-steered (skeptic, devils_advocate, judge),
+four conformist-role-steered (peacekeeper, pacifist,
+collaborator, facilitator), and one random-vector-steered
+(`random_0`, unit-Gaussian, coef = mean of |critical-coef|).
+ΔH = H_steer − H_base is then taken per layer per condition,
+and we plot the per-layer mean of cos(ΔH^CAA, ΔH^persona)
+averaged within prompt over tokens then across prompts. fig10
+plots ‖ΔH_ℓ‖ per layer per condition as a magnitude check —
+high cosine is uninformative if both perturbations have
+decayed to ~0.
+
+**Why the random control matters.** The reviewer's "downstream
+alignment ⇒ shared mechanism" concern only has teeth if the
+alignment is bigger than what an arbitrary direction at the
+same coefficient magnitude produces. `random_0` provides that
+null. On Gemma the persona/CAA cosines downstream sit ~2–3×
+above the random null at their argmax layer — so there is a
+persona-specific signal beyond the geometric baseline. On Qwen
+the personas mostly *do not* exceed the random null in
+magnitude (random reaches ~0.35 by midpoint, which is at or
+above the Qwen judge curve and around skeptic), so the Qwen
+downstream alignment is largely a geometric / magnitude
+artefact of pushing the residual at α=200 — not persona-
+specific. Per-cell numbers are in
+`results/perturbation_propagation.md`.
+
+**Why all four conformist roles, when fig1-fig8 drop
+facilitator?** fig1-fig8's "kept conditions" exclude
+facilitator because of the audit's headline-narrative
+constraint — facilitator is a conformist-family role that
+*reduces* sycophancy at its locked coef on both models, which
+breaks the simple bidirectionality story (see "Scope" above).
+That narrative concern doesn't apply to fig9-fig10: the
+question here is geometric, not behavioural, so the right unit
+of analysis is the complete conformist family (4 roles).
 
 **Sanity check.** At the injection layer ℓ = TARGET_LAYER,
 ΔH^CAA is by construction equal to α_CAA · v_CAA (broadcast
 across tokens), so the per-token cosine reduces analytically
 to sign(α_CAA · α_persona) · cos(v_CAA, v_persona) — the §4.3
-vector cosine, with sign flipped because the locked CAA
-coefficient is negative while persona coefficients are
-positive. The driver halts on a >0.005 absolute mismatch with
-the paper-reported number on either model. The two source-repo
-runs pass this check on all 6 (model, persona) cells; per-cell
-`observed`, `expected`, and `abs_err` values are stored in
-`data/{model}_perturbation_propagation.json["injection_layer_sanity_check"]`
-and reproduced in `results/perturbation_propagation.md`.
+vector cosine, with sign flipped according to whether the
+locked persona coef is in the same or opposite half-plane as
+α_CAA. (α_CAA < 0 on both models. α_persona > 0 for all three
+critical roles on both models, but conformists vary: Gemma
+facilitator is α<0 — flipping the sign-flip back so its
+expected cosine is positive — and Qwen peacekeeper / collaborator
+/ facilitator are also α<0.) The driver halts on a >0.005
+absolute mismatch on tier-1 cells (|expected| ≥ 0.010); for
+tier-2 noise-floor cells (Gemma DA at α=2000 has expected
+≈ −0.003; both random_0 cells have expected ≈ −0.007) the
+hard gate is `|observed| < 0.05` plus the projection check
+`⟨ΔH, v⟩.mean() ≈ α to within 5% relative` (which catches
+cross-model contamination and wrong-vector errors that the
+near-zero cosine cannot). All 16 (model, persona) cells pass.
 
 **What fig9 / fig10 / the table show.** See
 `results/perturbation_propagation.md` for the per-cell numbers
@@ -300,7 +335,8 @@ condition with decay ratio << 1 means the cosine reading at
 the final layer is being computed on small vectors and should
 be read with that caveat). fig9 shows the trajectory; fig10
 shows that the perturbations do not collapse to zero at any
-layer.
+layer (in fact they *amplify* by 3–7× across the captured
+range on both models).
 
 This is a curve-and-sanity-check report. Mechanistic
 conclusions belong in the parent paper repo

@@ -24,20 +24,35 @@ import numpy as np
 
 
 CRITICAL_PERSONAS = ["skeptic", "devils_advocate", "judge"]
+CONFORMIST_ROLES  = ["peacekeeper", "pacifist", "collaborator", "facilitator"]
+RANDOM_CONTROL    = "random_0"
+ALL_PERSONAS = CRITICAL_PERSONAS + CONFORMIST_ROLES + [RANDOM_CONTROL]
 
 # Sign-flipped paper-§4.3 cosines (mirrors driver's EXPECTED_COS_AT_INJECTION).
 # These are the analytical expected values at the injection layer given
-# the locked coef signs (α_caa<0, α_persona>0) — see RUN_PROMPT INV-3.
+# the locked coef signs — see RUN_PROMPT INV-3. α_caa<0 on both models;
+# persona α can be positive or negative depending on the role family +
+# model (see Phase 5 commit message in sycophancy-qwen for the full table).
 EXPECTED_COS_AT_INJECTION = {
     "google/gemma-2-27b-it": {
         "skeptic":          -0.0640,
         "devils_advocate":  -0.0030,
         "judge":            -0.0854,
+        "peacekeeper":      -0.0651,
+        "pacifist":         -0.0757,
+        "collaborator":     -0.1648,
+        "facilitator":      +0.1459,  # α_facilitator < 0 → sign flip cancels
+        "random_0":         -0.0075,
     },
     "Qwen/Qwen3-32B": {
         "skeptic":          +0.1049,
         "devils_advocate":  +0.1078,
         "judge":            +0.0423,
+        "peacekeeper":      -0.0171,  # α<0
+        "pacifist":         -0.0320,
+        "collaborator":     -0.0216,  # α<0
+        "facilitator":      -0.0556,  # α<0
+        "random_0":         -0.0065,
     },
 }
 
