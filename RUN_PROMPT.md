@@ -1065,43 +1065,41 @@ GPU-hours is high.
 
 ## Notes on this prompt (for your reference, not for the executor)
 
-What I changed vs the previous version:
+Design summary:
 
-- **Removed all four code blocks** (the 430-line driver, the build/figures/table
-  scripts, ~1100 lines of verbatim code). The executor now writes those
-  itself, faithful to `IMPLEMENTATION_SPEC.md` and the three pinned
-  invariants.
-- **Pinned the three non-obvious invariants** (hook-order, in-hook fp32
-  cast, sign-flip arithmetic). These are the things that, if got wrong,
-  produce silently plausible output. Re-deriving them from the spec is
-  expensive and easy to miss.
-- **Added a Phase 0 pre-flight battery** — 7 read-only checks the
-  executor runs against the existing repos before writing any code.
-  Confirms the spec's assumptions still hold and the §4.3 source
-  numbers are still where I said they are. Catches "the source repos
-  drifted" failures fast.
-- **Added 8 CPU-only unit tests** for the cosine helper + sign-flip
-  arithmetic + module-loading. The executor must include these in a
-  `test_perturbation_propagation.py` deliverable.
-- **Added gate tests at every phase boundary** (G2.x, G3.x, G4.x,
-  G6.x, G7.x) — ≈50 explicit checks total. The executor cannot
-  advance to the next phase without them passing, and is told NOT to
-  weaken a test to make it pass.
-- **Kept the README content** (the section text and the four edit
-  hooks) because it is pure prose, doesn't benefit from regeneration
-  by the executor, and pinning it ensures the public-mirror link
-  to vkmk1/Sycophancy-Steering lands in the right place.
-- **The §6.2 expected-cosine table is still verbatim** in the prompt
-  (under INV-3) — re-deriving it requires reading
-  `caa_decomposition.json` and `vector_cosine_similarities.json`,
-  which Phase 0 verifies but doesn't replicate the sign-flip logic for.
+- **Executor writes all the code.** The prompt does not embed the
+  driver, build, figures, or table scripts. It points at
+  `IMPLEMENTATION_SPEC.md` (the algorithm) and pins only the
+  invariants that produce silent wrong answers if got wrong.
+- **Four pinned invariants**: hook-registration order (INV-1),
+  in-hook fp32 cast (INV-2), tiered sign-based cosine check at the
+  injection layer (INV-3), and the Qwen `enable_thinking=False`
+  try/except wrapper (INV-4).
+- **Hardware-assumptions block** documents the determinism rationale
+  behind INV-3's tier-1 ±0.005 tolerance (single-GPU H100, bf16,
+  sdpa, no sampling → bit-deterministic forward, confirmed by
+  pilot_debug.py:85).
+- **Phase 0 pre-flight battery** (T0.1–T0.7): 7 read-only checks
+  against the source repos before any code is written. Catches
+  source drift fast.
+- **8 CPU-only unit tests** (U1–U8). U7 is mandatory and tests
+  both branches of INV-4 against a mock tokenizer.
+- **~50 gate tests across Phases 2–7** including G2.0/G5.0 hardware
+  prechecks and G2.5/G5.5 tokenizer-only chat-template behaviour
+  checks (the latter assert `'<think>' not in build_prompt(...)` on
+  Qwen — closes the silent-failure path where a missing
+  `enable_thinking=False` would corrupt downstream layers but pass
+  the §6.2 cosine sanity check).
+- **README content kept verbatim** (the section text and four edit
+  hooks) — pure prose, doesn't benefit from re-derivation by the
+  executor, and pins the `vkmk1/Sycophancy-Steering` link.
 
-Net effect: the prompt is roughly half the size of the previous version
-(~750 lines vs 1459) but does more of the heavy lifting that prevents
-silent wrong answers. The executor writes the code; the prompt makes
-sure the code can't pass its own tests if it has the kind of bug that
-would produce a plausible-but-wrong figure.
+Hardening history (commits on this branch, latest first):
 
-Want me to commit and push this `RUN_PROMPT.md` (overwrites the previous
-hand-coded version) to `sycophancy-clean-results` on
-`claude/design-implementation-spec-EWNnw`?
+  - INV-3 tiered rule + INV-4 + Hardware assumptions + G2.0/G2.5/G5.0/
+    G5.5 gates + mandatory U7. (Reviewer-flagged failure modes:
+    DA-tolerance-vs-noise, silent chat-template corruption.)
+  - Reduced from 1459-line embedded-code version to a thin
+    test-driven plan. (Executor writes code, ~50 gates verify it.)
+  - Original full-script-embedded version. (Deterministic but
+    brittle to repo drift.)
