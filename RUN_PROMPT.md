@@ -95,7 +95,7 @@ DO NOT CONFUSE — per-model constants
                                 Trust scripts/config.py only.
 
 ════════════════════════════════════════════════════════════════════════
-THREE NON-OBVIOUS INVARIANTS (re-deriving these from the spec is
+FOUR NON-OBVIOUS INVARIANTS (re-deriving these from the spec is
 expensive and easy to get wrong; pin them in your implementation):
 ════════════════════════════════════════════════════════════════════════
 
@@ -123,25 +123,106 @@ expensive and easy to get wrong; pin them in your implementation):
 
              store[ell] = tensor[0].detach().to(torch.float32).cpu()
 
-  INV-3  SIGN OF EXPECTED COSINE AT INJECTION LAYER. Per-token cosine
-         at layer TARGET_LAYER reduces analytically to
+  INV-3  SIGN OF EXPECTED COSINE AT INJECTION LAYER (TIERED RULE).
+         Per-token cosine at layer TARGET_LAYER reduces analytically
+         to
               cos(ΔH^CAA, ΔH^persona)
             = cos(α_caa · v_caa,  α_persona · v_persona)
             = sign(α_caa · α_persona) · cos(v_caa, v_persona).
          Because locked CAA coef is NEGATIVE while persona coefs are
          POSITIVE, the §4.3 vector-cosine numbers from the paper
-         appear sign-flipped in the observed cosines. The expected
-         table (from caa_decomposition.json on Gemma and
-         vector_cosine_similarities.json on Qwen) is:
+         appear sign-flipped in the observed cosines. Expected table
+         (from caa_decomposition.json on Gemma and
+         vector_cosine_similarities.json on Qwen):
 
                                   Gemma     Qwen
             skeptic              -0.0640   +0.1049
             devils_advocate      -0.0030   +0.1078
             judge                -0.0854   +0.0423
 
-         Tolerance ±0.005 absolute. Wrong sign on either model means
-         you have crossed the wires (loaded the wrong repo's vectors
-         or coefs). STOP — do not self-correct.
+         GATE RULE — applied per (model, persona):
+
+           if |expected| >= 0.010:
+               require |observed - expected| < 0.005
+           else:                                    # devils_advocate-class
+               require sign(observed) == sign(expected)   # catches sign errors
+                 AND  |observed| < 0.05                   # catches cross-model mix-ups
+                 AND  |observed - expected| < 0.005       # WARN-only diagnostic
+                                                          # (do NOT halt on this alone)
+
+         Rationale: the §6.2 expected magnitude for Gemma DA is 0.0030
+         — the same order as bf16 round-off in α·v at α=2000. A uniform
+         ±0.005 magnitude check would pass on noise alone for that
+         cell. The sign-based check catches the failure mode that
+         actually matters (wrong vectors / wrong coefs) without
+         chasing the bf16 noise floor.
+
+         Wrong sign on either model means you have crossed the wires
+         (loaded the wrong repo's vectors or coefs). STOP — do not
+         self-correct.
+
+  INV-4  CHAT-TEMPLATE WRAPPER. Qwen 3's chat template injects a
+         <think>...</think> block by default; passing
+         enable_thinking=False suppresses it. Gemma's template raises
+         TypeError on the same kwarg. The same driver script must run
+         on both repos (Phase 5 byte-identity requirement), so
+         build_prompt MUST use a try/except wrapper. This is the
+         canonical pattern from
+         sycophancy-qwen/scripts/02_evaluate_steering.py:42-56:
+
+             def build_prompt(tokenizer, question_text):
+                 chat = [{"role": "user", "content": question_text}]
+                 try:
+                     return tokenizer.apply_chat_template(
+                         chat, tokenize=False, add_generation_prompt=True,
+                         enable_thinking=False,
+                     )
+                 except TypeError:
+                     return tokenizer.apply_chat_template(
+                         chat, tokenize=False, add_generation_prompt=True,
+                     )
+
+         Failure mode this closes: if the executor writes the
+         no-kwarg form on Qwen, the model receives a <think>...
+         </think>-augmented prompt, the residuals at every layer
+         shift, and *the §6.2 sanity check still passes* (at the
+         injection layer ΔH = α·v independent of the prompt). A
+         wrong template is therefore SILENT for our other gates.
+         INV-4 + the mandatory U7 unit test + G2.5 / G5.5 tokenizer
+         behaviour gates close the hole.
+
+════════════════════════════════════════════════════════════════════════
+HARDWARE ASSUMPTIONS (the determinism rationale behind INV-3 tier 1)
+════════════════════════════════════════════════════════════════════════
+
+The INV-3 ±0.005 magnitude tolerance and the sign-based DA check both
+assume the forward pass is bit-deterministic across runs. That holds
+on the documented hardware:
+
+  - 1× H100 80GB SXM (or 1× A100 80GB) per the README. Gemma 27B in
+    bf16 ≈ 54 GB and Qwen 32B in bf16 ≈ 64 GB; both fit on one card,
+    so device_map="auto" places the model on a single GPU. Single-GPU
+    forward = no tensor-parallel all-reduce non-determinism.
+  - torch_dtype=torch.bfloat16; default attention impl = sdpa
+    (deterministic in current PyTorch for forward); model.eval() +
+    torch.no_grad() (dropout off, no autograd).
+  - No sampling (we run model.__call__, not model.generate).
+  - pilot_debug.py:85 ("||pre - base|| = ... should be ~0") confirms
+    two-pass bit-identity in the existing pipeline.
+
+If running on a sharded multi-GPU setup (e.g. 2× A100 40GB), the
+all-reduce reduction order is non-deterministic and the gate
+tolerances may fire spuriously. In that case, before model load:
+
+    import os, torch
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+    torch.use_deterministic_algorithms(True, warn_only=True)
+
+OR force single-GPU placement:
+
+    CUDA_VISIBLE_DEVICES=0 python 04_perturbation_propagation.py ...
+
+Phase 2's G2.0 precheck visualises the actual GPU layout at runtime.
 
 ════════════════════════════════════════════════════════════════════════
 PHASE 0 — Pre-implementation reconnaissance and verification
@@ -288,15 +369,29 @@ or `python scripts/test_perturbation_propagation.py` if pytest is unavailable):
   U6  load_unit fails loudly on a non-unit-norm tensor. Mock by
       saving a temp tensor of norm 0.5 and asserting load_unit raises.
 
-  U7  build_prompt round-trip: with both Gemma and a tokenizer that
-      lacks enable_thinking, build_prompt must return a non-empty
-      string ending in the chat-template's generation prefix. Use a
-      dummy tokenizer object (or mock) that has apply_chat_template;
-      Qwen's path should accept enable_thinking=False without error,
-      Gemma's path should raise TypeError on enable_thinking=False
-      and the wrapper must catch it. (You may skip U7 if you decide
-      it is too tokenizer-specific to mock cleanly; document why in
-      a comment.)
+  U7  build_prompt wrapper handles BOTH branches of INV-4. Mandatory.
+      Use a tiny mock tokenizer — no real tokenizer / model load:
+
+          class _MockTok:
+              def __init__(self, accepts_enable_thinking):
+                  self.accepts = accepts_enable_thinking
+              def apply_chat_template(self, chat, **kw):
+                  if "enable_thinking" in kw and not self.accepts:
+                      raise TypeError("unexpected kwarg 'enable_thinking'")
+                  prefix = "THINK_OFF:" if (kw.get("enable_thinking") is False
+                                            and self.accepts) else ""
+                  return prefix + chat[-1]["content"]
+
+          # Qwen-like path: kwarg consumed
+          out = build_prompt(_MockTok(accepts_enable_thinking=True), "x")
+          assert out.startswith("THINK_OFF:"), out
+
+          # Gemma-like path: TypeError caught, fallback used
+          out = build_prompt(_MockTok(accepts_enable_thinking=False), "x")
+          assert out == "x" and "THINK_OFF" not in out, out
+
+      This is the only test that proves the wrapper actually
+      exercises both code paths. Do not skip it.
 
   U8  EXPECTED_COS_AT_INJECTION map keys exactly equal the two
       MODEL_NAME strings; values exactly equal the table in INV-3
@@ -329,7 +424,28 @@ EXPECTED OUTPUT (the §6 sanity battery printout):
   [OK] inject cos(CAA, judge           ) observed=-0.0854±0.005
   [OK] ‖ΔH‖ > 1e-3 everywhere
 
-GATE TESTS the executor must run after the smoke test:
+GATE TESTS the executor must run before / after the smoke test:
+
+  G2.0  Hardware precheck (run BEFORE the smoke test, ~1 s; surfaces
+        the determinism assumption from "Hardware assumptions" above):
+
+          python -c "
+          import torch
+          assert torch.cuda.is_available(), 'no CUDA'
+          n = torch.cuda.device_count()
+          memgb = torch.cuda.get_device_properties(0).total_memory / 2**30
+          print(f'{n} GPU(s); primary {memgb:.1f} GB')
+          if n > 1:
+              print('WARN: multi-GPU detected. device_map=auto will shard 27B/32B'
+                    ' if the primary card cannot fit the model in bf16.')
+              print('      Either set CUDA_VISIBLE_DEVICES=0 or enable'
+                    ' torch.use_deterministic_algorithms(True, warn_only=True).')
+          if memgb < 70:
+              print(f'WARN: primary GPU has {memgb:.1f} GB; bf16 27B/32B may shard or OOM.')
+          "
+
+        Document the printed n / memgb values in your final summary
+        so the determinism assumption is auditable.
 
   G2.1  All [OK] in the printed sanity table — no [FAIL].
   G2.2  No [WARN] indicating MODEL_NAME is not in the
@@ -340,6 +456,26 @@ GATE TESTS the executor must run after the smoke test:
         200 ± 1% (Qwen). Read this off the printed minimum-norm line
         OR re-compute it from the captured tensors. Document the
         observed value.
+
+  G2.5  Chat-template behaviour check (no model load, ~5 s; closes
+        the INV-4 silent-failure hole):
+
+          python -c "
+          import importlib.util, pathlib
+          from transformers import AutoTokenizer
+          from config import MODEL_NAME
+          spec = importlib.util.spec_from_file_location(
+              'driver', pathlib.Path('04_perturbation_propagation.py'))
+          mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+          tok = AutoTokenizer.from_pretrained(MODEL_NAME)
+          if tok.pad_token is None: tok.pad_token = tok.eos_token
+          p = mod.build_prompt(tok, 'What is your view on the following topic?')
+          assert isinstance(p, str) and len(p) > 0, p
+          if 'qwen' in MODEL_NAME.lower():
+              assert '<think>' not in p, ('Qwen prompt contains <think> — '
+                                          'INV-4 wrapper not applied!')
+          print(f'chat-template OK on {MODEL_NAME}; len={len(p)}')
+          "
 
 If G2.1 / G2.3 fail with WRONG SIGN on any cosine: STOP. Do not
 self-correct. Wrong sign almost always means INV-3 is misapplied or
@@ -498,6 +634,17 @@ Re-run unit tests on Qwen too (still no GPU):
   python -m pytest scripts/test_perturbation_propagation.py -q
   # or: python scripts/test_perturbation_propagation.py
   # Gate: all U1..U8 pass.
+
+Hardware + chat-template gates on Qwen (mirror of G2.0 / G2.5):
+
+  G5.0  Hardware precheck — same command as G2.0. Document n / memgb.
+
+  G5.5  Chat-template behaviour — same command as G2.5. CRITICAL on
+        Qwen: the assert '<think>' not in p line MUST pass. Failure
+        here means INV-4's enable_thinking=False is not being
+        applied, the model is seeing a thinking-augmented prompt,
+        and your downstream cosines are silently incomparable to
+        the paper's setup. STOP.
 
 Smoke (1 prompt) — focus on the SIGN-FLIP MIX-UP CHECK:
 
@@ -886,12 +1033,15 @@ Test inventory (recap)
 If you finished the experiment, you have run all of these:
 
   Phase 0: T0.1 .. T0.7   (pre-flight verification)
-  Phase 1: U1 .. U8       (CPU unit tests on the driver)
-  Phase 2: G2.1 .. G2.4   (1-prompt smoke + sanity battery, Gemma)
+  Phase 1: U1 .. U8       (CPU unit tests on the driver; U7 mandatory)
+  Phase 2: G2.0 .. G2.5   (hardware precheck + 1-prompt smoke + sanity
+                           battery + chat-template behaviour, Gemma)
   Phase 3: G3.1 .. G3.5   (5-prompt extended smoke + determinism, Gemma)
   Phase 4: G4.1 .. G4.4   (full-run aggregate gates, Gemma)
-  Phase 5:                (mirror of Phase 1-4 tests on Qwen, with
-                           sign-flipped expected cosines)
+  Phase 5: G5.0, G5.5,
+           G2.x/G3.x/G4.x  (mirror of Phase 1–4 tests on Qwen, with
+            mirrors        sign-flipped expected cosines + the
+                           Qwen-critical "<think> not in prompt" check)
   Phase 6: G6.1 .. G6.7   (clean-results aggregation gates + README)
   Phase 7: G7.1           (source-repo README touch-ups)
 
