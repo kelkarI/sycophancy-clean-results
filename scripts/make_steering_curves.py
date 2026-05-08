@@ -160,12 +160,13 @@ def _plot_one(ax, rates, metric, title, ylabel, put_legend):
                label=f"baseline = "
                      + (f"{bl_rate*100:.1f}%" if metric == "rate"
                         else f"{bl_logit:+.2f}"))
-    ax.set_xlabel("Steering coefficient")
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    ax.set_xlabel("Steering coefficient", fontsize=14)
+    ax.set_ylabel(ylabel, fontsize=14)
+    ax.set_title(title, fontsize=14)
+    ax.tick_params(axis="both", labelsize=12)
     ax.grid(True, alpha=0.3, linestyle=":")
     if put_legend:
-        ax.legend(loc="best", fontsize=8, ncol=2, framealpha=0.9)
+        ax.legend(loc="best", fontsize=12, ncol=2, framealpha=0.9)
 
 
 def _family_series(rates, degraded, members, coeffs, metric):
@@ -247,12 +248,13 @@ def _plot_family(ax, rates, degraded, metric, title, ylabel, put_legend,
                ls=":", color="black", alpha=0.8, lw=1.0,
                label="baseline = " + (f"{bl_rate*100:.1f}%" if metric == "rate"
                                       else f"{bl_logit:+.2f}"))
-    ax.set_xlabel("Steering coefficient")
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    ax.set_xlabel("Steering coefficient", fontsize=14)
+    ax.set_ylabel(ylabel, fontsize=14)
+    ax.set_title(title, fontsize=14)
+    ax.tick_params(axis="both", labelsize=12)
     ax.grid(True, alpha=0.3, linestyle=":")
     if put_legend:
-        ax.legend(loc="best", fontsize=8, ncol=2, framealpha=0.9)
+        ax.legend(loc="best", fontsize=12, ncol=2, framealpha=0.9)
 
 
 def make_fig6():
@@ -270,7 +272,7 @@ def make_fig6():
     fig.suptitle(
         "Sycophancy response to steering coefficient (kept conditions only)\n"
         "rows = metric; columns = model; shaded band = random ctrl mean +/- std",
-        fontsize=11,
+        fontsize=14,
     )
     plt.tight_layout()
     save(fig, str(FIG / "fig6_steering_curves"))
@@ -299,7 +301,7 @@ def make_fig7():
         "Family-averaged sycophancy response to steering coefficient\n"
         "CAA (single vector) + critical mean (n=3) + conformist mean (n=3); "
         "bands = min/max across members; degraded cells masked",
-        fontsize=11,
+        fontsize=14,
     )
     plt.tight_layout()
     save(fig, str(FIG / "fig7_steering_curves_family"))
@@ -341,7 +343,7 @@ def make_fig8():
         "Family-averaged sycophancy response, positive steering only\n"
         "CAA + critical mean (n=3) + conformist mean (n=3); "
         "bands = min/max across members; degraded cells masked",
-        fontsize=11,
+        fontsize=14,
     )
     plt.tight_layout()
     save(fig, str(FIG / "fig8_steering_curves_family_pos"))
